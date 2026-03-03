@@ -1,0 +1,9 @@
+specVersion: "3.0"
+metadata:
+  name: cummins-dispatcher-ui5
+type: application
+resources:
+  configuration:
+    paths:
+      webapp: webapp
+
