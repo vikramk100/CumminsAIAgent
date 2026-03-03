@@ -18,10 +18,12 @@ MongoDB schema and data pipeline that replicates an SAP BNAC environment integra
 - `schemas/Operation.js` – SAP operation
 - `schemas/Confirmation.js` – SAP confirmation
 - `schemas/MachineLog.js` – Machine log (aligned with pgurazada1/machine-failure-logs)
+- `schemas/Manual.js` – Manual chunks (engine manuals from Cummins Document Library)
+- `schemas/Diagnostic.js` – Diagnostics (fault_code, symptoms, system_affected, resolution) for ML/API
 
 ```bash
 npm install mongoose
-# Use: const { WorkOrder, Operation, Confirmation, MachineLog } = require('./schemas');
+# Use: const { WorkOrder, Operation, Confirmation, MachineLog, Manual, Diagnostic } = require('./schemas');
 ```
 
 ## Python: load dataset and insert into MongoDB
@@ -48,8 +50,8 @@ npm install mongoose
    - Load **pgurazada1/machine-failure-logs** via Hugging Face `datasets`
    - Normalize columns to MachineID, Tool_ID, Process_Temperature, Air_Temperature, Rotational_Speed, Torque, Tool_Wear, Failure_Type
    - Select “unstable” machines (those with failure/high-tool-wear flags)
-   - Generate **10 synthetic SAP WorkOrders** (and Operations, Confirmations) linked to those machines
-   - Ensure each Completed WorkOrder has a corresponding MachineLog (Failure or High Tool Wear) shortly before `orderDate`
+   - Generate synthetic SAP WorkOrders (default 2500), Operations, and Confirmations linked to those machines
+   - Ensure a subset of Completed WorkOrders have a corresponding MachineLog (Failure or High Tool Wear) shortly before `orderDate`
    - Insert all MachineLogs and SAP documents into your MongoDB cluster
 
 4. **Optional: clear collections before insert**
@@ -65,4 +67,16 @@ npm install mongoose
 - `confirmations` – SAP confirmations  
 - `machinelogs` – External machine logs (dataset + synthetic “before order” logs)
 
+- `manuals` – Engine manual text chunks (X15, B6.7, ISB) from Cummins Document Library PDFs
+
 Database name: `sap_bnac` (override with `MONGODB_DB`).
+
+## Manuals collection (engine PDFs)
+
+`scripts/load_manuals_mongodb.py` scrapes the Cummins Document Library for PDFs (X15, B6.7, ISB), extracts text with PyMuPDF, and stores 500-word chunks (50-word overlap) in `manuals`. Schema: `manualId`, `engineModel`, `section`, `content`, `pageNumber`, `metadata` (url, version). Run with `CLEAR_MANUALS=1` to clear first; optional `CUMMINS_SEED_PDF_URLS` for extra PDF URLs.
+
+## ML failure classification and SAP-style API
+
+- **Extract:** `python scripts/extract_ml_dataset.py -o data/ml_dataset.csv` – flattens MachineLogs + engineModel to CSV.
+- **Train:** `python scripts/train_failure_classifier.py` (or add `xgb` for XGBoost). Saves `models/failure_classifier.joblib`. Use `predict_failure(telemetry_data)` → (failure_label, confidence).
+- **API:** `uvicorn api.main:app --reload`. GET `/api/predictions` returns Fiori-style `d.results` with criticality, confidence, suggestedOperation, manualReference; supports `$top`, `$skip`, `$filter`. POST `/api/predict` for single prediction; POST `/api/triggerWorkOrder` to create a WorkOrder from a prediction.

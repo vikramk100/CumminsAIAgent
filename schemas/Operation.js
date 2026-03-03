@@ -14,6 +14,8 @@ const operationSchema = new mongoose.Schema(
     equipmentId: { type: String, required: true, index: true },
     actualWork: { type: Number, default: 0 },
     description: { type: String },
+    diagnostic_steps: { type: String },
+    resolution: { type: String },
     sequence: { type: Number, default: 0 },
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now },
