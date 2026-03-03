@@ -34,6 +34,8 @@ def _failure_label_to_fault_code_and_severity(label):
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from criticality import confidence_severity_to_criticality
 
+from api.v1.router import router as v1_router
+
 MONGODB_URI = os.environ.get(
     "MONGODB_URI",
     "mongodb+srv://sankethrp_db_user:<db_password>@workorderandconfirmatio.gfkc6h6.mongodb.net/?appName=WorkOrderAndConfirmations",
@@ -47,6 +49,7 @@ WORK_ORDERS_COLLECTION = "workorders"
 
 app = FastAPI(title="Cummins SAP-Style Predictions API")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+app.include_router(v1_router)
 
 
 def _db():
@@ -184,6 +187,9 @@ def predict_single(body: TelemetryBody):
         }
     except FileNotFoundError as e:
         return {"error": str(e), "failure_label": "No_Failure", "confidence": 0.0}
+
+
+class TriggerWorkOrderBody(BaseModel):
     equipmentId: str
     predictedFailure: Optional[str] = None
     faultCode: Optional[str] = None
