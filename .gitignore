@@ -4,3 +4,8 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+
+# ML artifacts / local datasets
+data/
+models/
+*.joblib

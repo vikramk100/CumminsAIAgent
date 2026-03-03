@@ -19,7 +19,9 @@ const machineLogSchema = new mongoose.Schema(
       // Typical values: No Failure, Tool Wear Failure, Heat Dissipation Failure,
       // Power Failure, Overstrain Failure, Random Failures, High Tool Wear
     },
-    Machine_failure: { type: Number, min: 0, max: 1 }, // binary if present in dataset
+    symptom: { type: String },
+    failure_label: { type: String, index: true }, // ML target: e.g. fault_code + severity
+    Machine_failure: { type: Number, min: 0, max: 1 },
     logTimestamp: { type: Date, default: Date.now, index: true },
     createdAt: { type: Date, default: Date.now },
   },
