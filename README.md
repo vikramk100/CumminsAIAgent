@@ -2,6 +2,77 @@
 
 MongoDB schema and data pipeline that replicates an SAP BNAC environment integrated with external machine failure logs.
 
+- **[Database summary](DATABASE.md)** – Collections, relationships, and schema overview.
+- **[Software architecture](ARCHITECTURE.md)** – Backend, ML pipeline, scripts, and UI5 frontend.
+
+---
+
+## How to run locally
+
+### 1. Clone and set up environment
+
+```bash
+git clone <repo-url>
+cd CumminsAIAgent
+```
+
+### 2. Python backend (API + ML)
+
+```bash
+python -m venv .venv
+.venv\Scripts\activate   # Windows
+# source .venv/bin/activate   # macOS/Linux
+pip install -r requirements.txt
+```
+
+Copy `.env.example` to `.env` and set:
+
+- `MONGODB_PASSWORD` – your MongoDB Atlas password (replace `<db_password>` in URI if needed).
+- `MONGODB_DB` – database name (default: `sap_bnac`).
+- `OPENAI_API_KEY` – for agentic dispatch briefing (optional; agent has fallback if missing).
+
+Start the API:
+
+```bash
+uvicorn api.main:app --reload
+```
+
+API runs at **http://localhost:8000**. Docs: http://localhost:8000/docs.
+
+### 3. (Optional) Load data into MongoDB
+
+Run from project root with venv active:
+
+```bash
+python scripts/load_and_insert_mongodb.py
+python scripts/load_manuals_mongodb.py
+python scripts/integrate_vehicle_diagnostics_mongodb.py
+```
+
+For ML predictions, extract and train once:
+
+```bash
+python scripts/extract_ml_dataset.py -o data/ml_dataset.csv
+python scripts/train_failure_classifier.py
+```
+
+### 4. (Optional) SAP UI5 frontend
+
+```bash
+npm install
+npm start
+```
+
+Then open the URL shown (e.g. http://localhost:8080/webapp/index.html). Use `?orderId=WO-xxxxx` and `?apiBase=http://localhost:8000` if needed.
+
+### 5. Run tests
+
+```bash
+pytest -q
+```
+
+---
+
 ## Data model (the bridge)
 
 | SAP BNAC | External logs | Link |
@@ -62,12 +133,15 @@ npm install mongoose
 
 ## MongoDB collections
 
+See **[DATABASE.md](DATABASE.md)** for the full database summary. In short:
+
 - `workorders` – SAP work orders
 - `operations` – SAP operations
 - `confirmations` – SAP confirmations  
 - `machinelogs` – External machine logs (dataset + synthetic “before order” logs)
-
 - `manuals` – Engine manual text chunks (X15, B6.7, ISB) from Cummins Document Library PDFs
+- `diagnostics` – Vehicle diagnostics (fault codes, symptoms, resolution)
+- `audit_trail` – UI audit events (e.g. tool checklist)
 
 Database name: `sap_bnac` (override with `MONGODB_DB`).
 
