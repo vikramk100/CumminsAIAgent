@@ -1,0 +1,13 @@
+{
+  "name": "cummins-dispatcher-ui5",
+  "private": true,
+  "version": "0.1.0",
+  "devDependencies": {
+    "@ui5/cli": "^3.10.0"
+  },
+  "scripts": {
+    "ui5:install": "ui5 --version",
+    "start": "ui5 serve -o /webapp/index.html"
+  }
+}
+

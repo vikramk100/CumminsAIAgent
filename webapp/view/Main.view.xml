@@ -1,0 +1,84 @@
+<mvc:View
+  xmlns:mvc="sap.ui.core.mvc"
+  xmlns="sap.m"
+  xmlns:uxap="sap.uxap"
+  xmlns:layout="sap.ui.layout"
+  xmlns:core="sap.ui.core"
+  controllerName="cummins.dispatcher.controller.Main">
+
+  <uxap:ObjectPageLayout id="ObjectPage" showFooter="false" useIconTabBar="true">
+    <uxap:headerTitle>
+      <uxap:ObjectPageDynamicHeaderTitle>
+        <uxap:expandedHeading>
+          <HBox alignItems="Center" justifyContent="SpaceBetween" width="100%">
+            <VBox width="70%">
+              <Title level="H2" text="Equipment: {dispatch>/context_summary/equipmentId}" />
+              <Text text="Failure Label: {dispatch>/context_summary/failure_label}" />
+            </VBox>
+            <VBox alignItems="End" width="30%">
+              <ObjectStatus
+                text="{dispatch>/ui/criticalityText}"
+                state="{dispatch>/ui/criticalityState}" />
+              <ProgressIndicator
+                width="220px"
+                value="{dispatch>/ui/confidencePercent}"
+                displayValue="{dispatch>/ui/confidenceDisplay}"
+                state="{dispatch>/ui/criticalityState}" />
+            </VBox>
+          </HBox>
+        </uxap:expandedHeading>
+      </uxap:ObjectPageDynamicHeaderTitle>
+    </uxap:headerTitle>
+
+    <uxap:sections>
+      <uxap:ObjectPageSection title="Insights">
+        <uxap:subSections>
+          <uxap:ObjectPageSubSection>
+            <VBox class="sapUiSmallMargin">
+              <Text
+                text="{dispatch>/mission_briefing/root_cause_analysis}"
+                wrapping="true" />
+            </VBox>
+          </uxap:ObjectPageSubSection>
+        </uxap:subSections>
+      </uxap:ObjectPageSection>
+
+      <uxap:ObjectPageSection title="Preparation">
+        <uxap:subSections>
+          <uxap:ObjectPageSubSection>
+            <List
+              id="ToolsList"
+              headerText="Required Tools"
+              items="{dispatch>/ui/tools}">
+              <CustomListItem>
+                <HBox alignItems="Center" justifyContent="SpaceBetween" width="100%">
+                  <CheckBox
+                    selected="{dispatch>checked}"
+                    select="onPressToolKitCheck">
+                    <core:CustomData key="toolName" value="{dispatch>name}" writeToDom="false" />
+                  </CheckBox>
+                  <DisplayListItem label="{dispatch>name}" value="" />
+                </HBox>
+              </CustomListItem>
+            </List>
+          </uxap:ObjectPageSubSection>
+        </uxap:subSections>
+      </uxap:ObjectPageSection>
+
+      <uxap:ObjectPageSection title="Documentation">
+        <uxap:subSections>
+          <uxap:ObjectPageSubSection>
+            <Panel
+              headerText="Manual Reference Snippet"
+              expandable="true"
+              expanded="true"
+              class="sapUiSmallMargin">
+              <FormattedText htmlText="{dispatch>/ui/manualSnippetHtml}" />
+            </Panel>
+          </uxap:ObjectPageSubSection>
+        </uxap:subSections>
+      </uxap:ObjectPageSection>
+    </uxap:sections>
+  </uxap:ObjectPageLayout>
+</mvc:View>
+
