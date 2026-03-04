@@ -1,0 +1,12 @@
+.env
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+
+# ML artifacts / local datasets
+data/
+models/
+*.joblib
