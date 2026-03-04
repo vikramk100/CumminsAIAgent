@@ -1,0 +1,51 @@
+<mvc:View
+  xmlns:mvc="sap.ui.core.mvc"
+  xmlns="sap.m"
+  controllerName="cummins.dispatcher.controller.Equipments">
+  <Page title="Equipments" showNavButton="true" navButtonPress="onNavBack">
+    <content>
+      <VBox class="sapUiSmallMargin">
+        <Toolbar>
+          <Title text="Equipments" level="H2" />
+          <ToolbarSpacer />
+          <SearchField
+            id="EquipmentSearch"
+            width="20rem"
+            placeholder="Search by Equipment ID"
+            search="onSearch"
+            liveChange="onSearch" />
+        </Toolbar>
+
+        <Table
+          id="EquipmentsTable"
+          class="sapUiSizeCondensed"
+          headerText="Equipment Overview"
+          items="{wo>/equipments}">
+          <columns>
+            <Column width="12rem">
+              <Text text="Equipment ID" />
+            </Column>
+            <Column width="10rem">
+              <Text text="Engine Model" />
+            </Column>
+            <Column width="10rem">
+              <Text text="Latest Criticality" />
+            </Column>
+          </columns>
+          <items>
+            <ColumnListItem type="Inactive">
+              <cells>
+                <Text text="{wo>equipmentId}" />
+                <Text text="{wo>engineModel}" />
+                <ObjectStatus
+                  text="{wo>criticalityText}"
+                  state="{wo>criticalityState}" />
+              </cells>
+            </ColumnListItem>
+          </items>
+        </Table>
+      </VBox>
+    </content>
+  </Page>
+</mvc:View>
+

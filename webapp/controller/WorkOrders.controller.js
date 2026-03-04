@@ -15,7 +15,6 @@ sap.ui.define(
         if (!this._woModel) {
           this._woModel = new JSONModel({
             workOrders: [],
-            selectedConfirmations: [],
             _search: "",
           });
           this.getOwnerComponent().setModel(this._woModel, "wo");
@@ -51,7 +50,6 @@ sap.ui.define(
           var results = data.results || [];
           this._woModel.setData({
             workOrders: results,
-            selectedConfirmations: [],
             _search: "",
           });
         } catch (e) {
@@ -61,22 +59,13 @@ sap.ui.define(
         }
       },
 
-      onWorkOrderSelect: function (oEvent) {
-        var oItem = oEvent.getParameter("listItem");
-        if (!oItem) {
-          return;
-        }
+      onWorkOrderPress: function (oEvent) {
+        var oItem = oEvent.getSource();
         var oCtx = oItem.getBindingContext("wo");
         if (!oCtx) {
           return;
         }
         var orderId = oCtx.getProperty("orderId");
-        var confirmations = oCtx.getProperty("confirmations") || [];
-
-        // Update confirmations panel
-        this._woModel.setProperty("/selectedConfirmations", confirmations);
-
-        // Navigate to detail view
         if (orderId) {
           this.getOwnerComponent()
             .getRouter()

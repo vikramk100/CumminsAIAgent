@@ -49,10 +49,9 @@
         <Table
           id="WorkOrdersTable"
           class="sapUiSizeCondensed"
-          mode="SingleSelectMaster"
+          mode="None"
           headerText="Work Orders"
-          items="{wo>/workOrders}"
-          selectionChange="onWorkOrderSelect">
+          items="{wo>/workOrders}">
           <columns>
             <Column width="10rem">
               <Text text="Work Order" />
@@ -69,9 +68,12 @@
             <Column width="8rem" hAlign="End">
               <Text text="Actual Work (h)" />
             </Column>
+            <Column width="18rem">
+              <Text text="Confirmations" />
+            </Column>
           </columns>
           <items>
-            <ColumnListItem type="Inactive">
+            <ColumnListItem type="Active" press="onWorkOrderPress" vAlign="Top">
               <cells>
                 <ObjectIdentifier
                   title="{wo>orderId}"
@@ -82,26 +84,22 @@
                   state="{= ${wo>status} === 'Completed' ? 'Success' : (${wo>status} === 'Created' ? 'Information' : 'Warning') }" />
                 <Text text="{wo>priority}" />
                 <Text text="{wo>actualWork}" />
+                <Panel
+                  expandable="true"
+                  expanded="false"
+                  headerText="{= 'Confirmations (' + ((${wo>confirmations}.length || 0)) + ')' }"
+                  class="sapUiTinyMarginTop">
+                  <List items="{wo>confirmations}">
+                    <StandardListItem
+                      title="{wo>confirmationText}"
+                      description="{= 'Actual Work: ' + (${wo>actualWork} || 0) + ' h'}"
+                      icon="sap-icon://accept" />
+                  </List>
+                </Panel>
               </cells>
             </ColumnListItem>
           </items>
         </Table>
-
-        <Panel
-          id="ConfirmationsPanel"
-          headerText="Confirmations for Selected Work Order"
-          expandable="true"
-          expanded="true"
-          class="sapUiMediumMarginTop">
-          <List
-            id="ConfirmationsList"
-            items="{wo>/selectedConfirmations}">
-            <StandardListItem
-              title="{wo>confirmationText}"
-              description="{= 'Actual Work: ' + (${wo>actualWork} || 0) + ' h'}"
-              icon="sap-icon://accept" />
-          </List>
-        </Panel>
       </VBox>
     </content>
   </Page>

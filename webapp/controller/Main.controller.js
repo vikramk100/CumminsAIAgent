@@ -51,6 +51,55 @@ sap.ui.define(
           }
           const data = await res.json();
 
+          // Normalize backend snake_case fields into camelCase for the view model
+          const workOrderDetailRaw = data.work_order_detail || data.workOrderDetail || {};
+          const orderIdFromApi = data.orderId || workOrderDetailRaw.orderId || orderId;
+
+          // Ensure we always have a usable workOrderDetail object
+          const telemetryRaw =
+            workOrderDetailRaw.telemetry ||
+            data.ml_prediction?.telemetry ||
+            {};
+          const telemetry = {
+            Process_Temperature:
+              telemetryRaw.Process_Temperature ?? 0,
+            Air_Temperature:
+              telemetryRaw.Air_Temperature ?? 0,
+            Rotational_Speed:
+              telemetryRaw.Rotational_Speed ?? 0,
+            Torque:
+              telemetryRaw.Torque ?? 0,
+            Tool_Wear:
+              telemetryRaw.Tool_Wear ?? 0,
+          };
+          const workOrderDetail = {
+            orderId: workOrderDetailRaw.orderId || orderIdFromApi,
+            status: workOrderDetailRaw.status || data.work_order?.status,
+            priority: workOrderDetailRaw.priority ?? data.work_order?.priority ?? "",
+            equipmentId:
+              workOrderDetailRaw.equipmentId ||
+              data.work_order?.equipmentId ||
+              data.context_summary?.equipmentId ||
+              "",
+            actualWork: workOrderDetailRaw.actualWork ?? data.work_order?.actualWork ?? "",
+            orderDate: workOrderDetailRaw.orderDate || data.work_order?.orderDate || "",
+            daysToSolve:
+              workOrderDetailRaw.daysToSolve != null
+                ? workOrderDetailRaw.daysToSolve
+                : "",
+            issueDescription:
+              workOrderDetailRaw.issueDescription ||
+              "Placeholder issue description for this work order. In a real system this would summarize the fault, affected subsystem, and key findings from diagnostics and technician notes.",
+            technician:
+              workOrderDetailRaw.technician ||
+              "Technician (unassigned)",
+            telemetry: telemetry,
+            operations: workOrderDetailRaw.operations || [],
+            confirmations: workOrderDetailRaw.confirmations || [],
+            timeline: workOrderDetailRaw.timeline || [],
+          };
+          data.workOrderDetail = workOrderDetail;
+
           // Normalize UI bindings
           const failureLabel = data?.context_summary?.failure_label || "No_Failure";
           const confidence = Number(data?.context_summary?.confidence || 0);

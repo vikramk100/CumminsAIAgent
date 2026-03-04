@@ -2,7 +2,7 @@
   xmlns:mvc="sap.ui.core.mvc"
   xmlns="sap.m"
   xmlns:uxap="sap.uxap"
-  xmlns:layout="sap.ui.layout"
+  xmlns:layout="sap.ui.layout.form"
   xmlns:core="sap.ui.core"
   controllerName="cummins.dispatcher.controller.Main">
 
@@ -10,22 +10,28 @@
     <uxap:headerTitle>
       <uxap:ObjectPageDynamicHeaderTitle>
         <uxap:expandedHeading>
-          <HBox alignItems="Center" justifyContent="SpaceBetween" width="100%">
-            <VBox width="70%">
-              <Title level="H2" text="Equipment: {dispatch>/context_summary/equipmentId}" />
-              <Text text="Failure Label: {dispatch>/context_summary/failure_label}" />
-            </VBox>
-            <VBox alignItems="End" width="30%">
+          <VBox class="sapUiMediumMargin">
+            <Title
+              level="H2"
+              text="Equipment {dispatch>/context_summary/equipmentId}" />
+            <Text
+              text="Failure: {dispatch>/context_summary/failure_label}"
+              wrapping="false" />
+            <HBox alignItems="Center" class="sapUiSmallMarginTop">
+              <Text text="Risk level" class="sapUiTinyMarginEnd" />
               <ObjectStatus
                 text="{dispatch>/ui/criticalityText}"
                 state="{dispatch>/ui/criticalityState}" />
+            </HBox>
+            <HBox alignItems="Center" class="sapUiTinyMarginTop">
+              <Text text="Confidence" class="sapUiTinyMarginEnd" />
               <ProgressIndicator
-                width="220px"
+                width="180px"
                 percentValue="{dispatch>/ui/confidencePercent}"
                 displayValue="{dispatch>/ui/confidenceDisplay}"
                 state="{dispatch>/ui/criticalityState}" />
-            </VBox>
-          </HBox>
+            </HBox>
+          </VBox>
         </uxap:expandedHeading>
       </uxap:ObjectPageDynamicHeaderTitle>
     </uxap:headerTitle>
@@ -63,7 +69,7 @@
               </layout:SimpleForm>
             </VBox>
           </uxap:ObjectPageSubSection>
-          <uxap:ObjectPageSubSection title="Issue & Equipment Details">
+          <uxap:ObjectPageSubSection title="Issue &amp; Equipment Details">
             <VBox class="sapUiSmallMargin">
               <Panel
                 headerText="Issue Description"

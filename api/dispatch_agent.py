@@ -71,7 +71,17 @@ def build_context_package(order_id: str) -> dict[str, Any]:
     end_dt = last_conf_dt or datetime.now(timezone.utc)
     days_to_solve: Optional[int] = None
     if isinstance(order_date, datetime):
-        days_to_solve = (end_dt - order_date).days
+        try:
+            # Normalize naive datetimes to UTC to avoid offset-naive vs offset-aware errors
+            od = order_date
+            if od.tzinfo is None:
+                od = od.replace(tzinfo=timezone.utc)
+            ed = end_dt
+            if ed.tzinfo is None:
+                ed = ed.replace(tzinfo=timezone.utc)
+            days_to_solve = (ed - od).days
+        except Exception:
+            days_to_solve = None
 
     issue_description = ""
     if operations:

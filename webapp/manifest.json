@@ -63,6 +63,11 @@
           "target": "Launchpad"
         },
         {
+          "name": "equipments",
+          "pattern": "equipments",
+          "target": "Equipments"
+        },
+        {
           "name": "workOrders",
           "pattern": "workorders",
           "target": "WorkOrders"
@@ -76,6 +81,9 @@
       "targets": {
         "Launchpad": {
           "viewName": "Launchpad"
+        },
+        "Equipments": {
+          "viewName": "Equipments"
         },
         "WorkOrders": {
           "viewName": "WorkOrders"

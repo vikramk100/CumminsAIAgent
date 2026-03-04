@@ -2,6 +2,20 @@
   xmlns:mvc="sap.ui.core.mvc"
   xmlns="sap.m"
   controllerName="cummins.dispatcher.controller.App">
-  <App id="app" />
+  <VBox fitContainer="true">
+    <Bar design="Header">
+      <contentLeft>
+        <Title text="SAP - Business Network Portal" level="H3" />
+      </contentLeft>
+      <contentRight>
+        <Button text="Notifications" type="Transparent" />
+        <Button text="Help" type="Transparent" />
+        <Button text="Settings" type="Transparent" />
+        <Button text="User Profile" type="Transparent" />
+        <Button text="Support Center" type="Transparent" />
+      </contentRight>
+    </Bar>
+    <App id="app" />
+  </VBox>
 </mvc:View>
 

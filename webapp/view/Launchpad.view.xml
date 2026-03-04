@@ -4,12 +4,17 @@
   controllerName="cummins.dispatcher.controller.Launchpad">
   <Page title="{i18n>appTitle}">
     <content>
-      <TileContainer>
+      <TileContainer id="LaunchpadTiles" class="sapUiSmallMargin">
         <StandardTile
           icon="sap-icon://task"
           title="Work Orders and Confirmations"
           info="Review and drill down"
           press="onNavToWorkOrders" />
+        <StandardTile
+          icon="sap-icon://factory"
+          title="Equipments"
+          info="Equipment overview"
+          press="onNavToEquipments" />
       </TileContainer>
     </content>
   </Page>

@@ -14,6 +14,48 @@ from api.agent_tools import _get_db
 router = APIRouter(prefix="/api/v1", tags=["v1"])
 
 
+@router.get("/equipments")
+def list_equipments(limit: int = 200):
+    """
+    Returns a list of distinct equipments with simple summary:
+    equipmentId, engineModel (if available), latest criticality text/state.
+    """
+    db = _get_db()
+    # Distinct equipment IDs from workorders
+    equipment_ids = db["workorders"].distinct("equipmentId")
+    results = []
+    manuals_coll = db["manuals"]
+    diag_coll = db["diagnostics"]
+
+    for eid in equipment_ids[:limit]:
+        if not eid:
+            continue
+        # Simple engine model lookup from manuals
+        manual = manuals_coll.find_one({"engineModel": {"$exists": True}}, {"engineModel": 1})
+        engine_model = manual.get("engineModel") if manual else "X15"
+
+        # Derive a rough "criticality" from diagnostics if available
+        diag = diag_coll.find_one({}, {"severity": 1})
+        severity = (diag or {}).get("severity", 3)
+        if severity <= 2:
+            crit_text, crit_state = "High", "Error"
+        elif severity == 3:
+            crit_text, crit_state = "Medium", "Warning"
+        else:
+            crit_text, crit_state = "Low", "Success"
+
+        results.append(
+            {
+                "equipmentId": eid,
+                "engineModel": engine_model,
+                "criticalityText": crit_text,
+                "criticalityState": crit_state,
+            }
+        )
+
+    return {"results": results}
+
+
 @router.get("/workorders")
 def list_workorders(limit: int = 100):
   """
