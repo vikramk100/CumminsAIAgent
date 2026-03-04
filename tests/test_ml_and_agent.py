@@ -79,6 +79,10 @@ def test_agent_tools_query_manuals_extracts_tools(monkeypatch):
 def test_mongo_connection_reused(monkeypatch):
     from api import agent_tools
 
+    monkeypatch.setenv("MONGODB_PASSWORD", "test")  # so _get_db() passes placeholder check
+    # Reset module client so the test creates a new one via patched MongoClient
+    monkeypatch.setattr(agent_tools, "_client", None)
+
     fake_db = mock.Mock()
     fake_client = mock.MagicMock()
     fake_client.__getitem__.return_value = fake_db

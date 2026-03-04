@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 import pymongo
+from pymongo.errors import PyMongoError
 
 try:
     from dotenv import load_dotenv
@@ -36,9 +37,32 @@ _client: Optional[pymongo.MongoClient] = None
 
 
 def _get_db():
+    """
+    Returns a MongoDB database handle.
+
+    In local/demo setups where MongoDB is not configured (placeholder password
+    still present and no MONGODB_PASSWORD provided), this function raises a
+    RuntimeError quickly instead of hanging on a remote connection attempt.
+    """
     global _client
-    if _client is None:
-        _client = pymongo.MongoClient(MONGODB_URI)
+
+    if _client is not None:
+        return _client[DB_NAME]
+
+    # Detect unconfigured connection string and fail fast (used by demo fallback).
+    if "<db_password>" in MONGODB_URI and not os.environ.get("MONGODB_PASSWORD"):
+        raise RuntimeError("MongoDB not configured: MONGODB_URI still contains <db_password>.")
+
+    # Use reasonable timeouts: Atlas DNS + TLS handshake can exceed 1-2s on some networks.
+    _client = pymongo.MongoClient(MONGODB_URI, serverSelectionTimeoutMS=10000, connectTimeoutMS=10000)
+    try:
+        # Trigger server selection once; failures will surface immediately.
+        _client.admin.command("ping")
+    except PyMongoError as exc:
+        # Reset client so future calls can retry or fall back.
+        _client = None
+        raise RuntimeError(f"MongoDB connection failed: {exc}") from exc
+
     return _client[DB_NAME]
 
 

@@ -10,22 +10,39 @@
     <uxap:headerTitle>
       <uxap:ObjectPageDynamicHeaderTitle>
         <uxap:expandedHeading>
-          <HBox alignItems="Center" justifyContent="SpaceBetween" width="100%">
-            <VBox width="70%">
-              <Title level="H2" text="Equipment: {dispatch>/context_summary/equipmentId}" />
-              <Text text="Failure Label: {dispatch>/context_summary/failure_label}" />
-            </VBox>
-            <VBox alignItems="End" width="30%">
-              <ObjectStatus
-                text="{dispatch>/ui/criticalityText}"
-                state="{dispatch>/ui/criticalityState}" />
-              <ProgressIndicator
-                width="220px"
-                value="{dispatch>/ui/confidencePercent}"
-                displayValue="{dispatch>/ui/confidenceDisplay}"
-                state="{dispatch>/ui/criticalityState}" />
-            </VBox>
-          </HBox>
+          <VBox width="100%">
+            <MessageStrip
+              id="StatusStrip"
+              text="API: {dispatch>/orderId} → {dispatch>/_apiBase}"
+              type="Information"
+              showIcon="true"
+              class="sapUiSmallMarginBottom"
+              visible="{= !!${dispatch>/_apiBase} }" />
+            <MessageStrip
+              id="ErrorStrip"
+              text="{dispatch>/error}"
+              type="Error"
+              showIcon="true"
+              class="sapUiSmallMarginBottom"
+              visible="{= !!${dispatch>/error} }" />
+            <BusyIndicator id="LoadBusy" text="Loading dispatch brief..." class="sapUiSmallMarginBottom" visible="{dispatch>/loading}" />
+            <HBox alignItems="Center" justifyContent="SpaceBetween" width="100%">
+              <VBox width="70%">
+                <Title level="H2" text="Equipment: {dispatch>/context_summary/equipmentId}" />
+                <Text text="Failure Label: {dispatch>/context_summary/failure_label}" />
+              </VBox>
+              <VBox alignItems="End" width="30%">
+                <ObjectStatus
+                  text="{dispatch>/ui/criticalityText}"
+                  state="{dispatch>/ui/criticalityState}" />
+                <ProgressIndicator
+                  width="220px"
+                  percentValue="{dispatch>/ui/confidencePercent}"
+                  displayValue="{dispatch>/ui/confidenceDisplay}"
+                  state="{dispatch>/ui/criticalityState}" />
+              </VBox>
+            </HBox>
+          </VBox>
         </uxap:expandedHeading>
       </uxap:ObjectPageDynamicHeaderTitle>
     </uxap:headerTitle>
@@ -55,7 +72,9 @@
                   <CheckBox
                     selected="{dispatch>checked}"
                     select="onPressToolKitCheck">
-                    <core:CustomData key="toolName" value="{dispatch>name}" writeToDom="false" />
+                    <customData>
+                      <core:CustomData key="toolName" value="{dispatch>name}" writeToDom="false" />
+                    </customData>
                   </CheckBox>
                   <DisplayListItem label="{dispatch>name}" value="" />
                 </HBox>

@@ -31,16 +31,26 @@ sap.ui.define(
       _loadDispatchBrief: async function () {
         const orderId = this._getOrderId();
         const base = this._getApiBase();
+        const url = `${base}/api/v1/dispatch-brief/${encodeURIComponent(orderId)}`;
 
         this._dispatchModel.setProperty("/loading", true);
         this._dispatchModel.setProperty("/error", null);
         this._dispatchModel.setProperty("/orderId", orderId);
+        this._dispatchModel.setProperty("/_apiBase", base);
+
+        const timeoutMs = 15000;
+        const controller = new AbortController();
+        const timeoutId = window.setTimeout(function () {
+          controller.abort();
+        }, timeoutMs);
 
         try {
-          const res = await fetch(`${base}/api/v1/dispatch-brief/${encodeURIComponent(orderId)}`, {
+          const res = await fetch(url, {
             method: "GET",
-            headers: { "Accept": "application/json" }
+            headers: { "Accept": "application/json" },
+            signal: controller.signal
           });
+          window.clearTimeout(timeoutId);
           if (!res.ok) {
             const t = await res.text();
             throw new Error(`API error ${res.status}: ${t}`);
@@ -72,9 +82,14 @@ sap.ui.define(
 
           this._dispatchModel.setData({ ...this._dispatchModel.getData(), ...data }, true);
         } catch (e) {
-          this._dispatchModel.setProperty("/error", String(e?.message || e));
+          window.clearTimeout(timeoutId);
+          var msg = e && e.name === "AbortError"
+            ? "Request timed out. Is the backend running? Start it with: uvicorn api.main:app --reload (from project root)."
+            : String(e && e.message || e);
+          this._dispatchModel.setProperty("/error", msg);
           MessageToast.show("Failed to load dispatch brief.");
         } finally {
+          window.clearTimeout(timeoutId);
           this._dispatchModel.setProperty("/loading", false);
         }
       },

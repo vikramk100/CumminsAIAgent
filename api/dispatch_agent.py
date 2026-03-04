@@ -2,6 +2,7 @@
 Agentic AI Dispatcher: builds context from tools and produces Technician Mission Briefing via OpenAI.
 """
 
+import concurrent.futures
 import json
 import os
 import re
@@ -37,12 +38,12 @@ def _fault_code_to_system_affected(fault_code: str) -> str:
     return (d.get("system_affected") or "Engine") if d else "Engine"
 
 
-def build_context_package(order_id: str) -> dict[str, Any]:
-    """Load WorkOrder/MachineLog, run tools, return context for the LLM."""
+def _build_context_package_impl(order_id: str) -> dict[str, Any]:
+    """Actual DB-backed context build. Called under timeout."""
     db = _get_db()
     wo = db[WORK_ORDERS_COLLECTION].find_one({"orderId": order_id})
     if not wo:
-        return {"error": f"WorkOrder {order_id} not found", "orderId": order_id}
+        return _demo_context_package(order_id, db_error=f"WorkOrder {order_id} not found")
     equipment_id = wo.get("equipmentId") or ""
     ml_result = get_ml_prediction(equipment_id)
     fault_code = ml_result.get("fault_code") or ""
@@ -63,6 +64,73 @@ def build_context_package(order_id: str) -> dict[str, Any]:
         "manuals": manuals,
         "historical_fixes": historical,
         "system_affected": system_affected,
+    }
+
+
+# Max seconds to wait for MongoDB + ML queries before returning demo data.
+# Keep this high enough for real Atlas latency and model load on first request.
+_CONTEXT_TIMEOUT_SEC = 15
+
+
+def build_context_package(order_id: str) -> dict[str, Any]:
+    """Load WorkOrder/MachineLog, run tools, return context for the LLM.
+
+    When MongoDB is not configured or unreachable or slow, returns within
+    _CONTEXT_TIMEOUT_SEC with demo context so the UI never hangs.
+    """
+    try:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+            future = ex.submit(_build_context_package_impl, order_id)
+            return future.result(timeout=_CONTEXT_TIMEOUT_SEC)
+    except concurrent.futures.TimeoutError:
+        return _demo_context_package(
+            order_id,
+            db_error=f"MongoDB did not respond within {_CONTEXT_TIMEOUT_SEC}s; showing demo data.",
+        )
+    except Exception as exc:
+        return _demo_context_package(order_id, db_error=str(exc))
+
+
+def _demo_context_package(order_id: str, db_error: Optional[str] = None) -> dict[str, Any]:
+    """
+    Demo / fallback context used when MongoDB is not available.
+
+    This lets the frontend render a complete Mission Briefing without requiring
+    any local data loading.
+    """
+    return {
+        "orderId": order_id,
+        "workOrder": {
+            "status": "Created",
+            "priority": 2,
+            "equipmentId": "DEMO-ENGINE-01",
+            "actualWork": 0,
+        },
+        "ml_prediction": {
+            "failure_label": "High_Tool_Wear_S3",
+            "confidence": 0.92,
+            "fault_code": "P1001",
+            "severity": 3,
+            "symptom": "Repeated high torque and elevated process temperature detected in recent logs.",
+        },
+        "manuals": [
+            {
+                "content": "Inspect the high-pressure fuel lines for chafing and leaks. Verify torque values on all fasteners per torque chart. Replace worn tooling before returning unit to service.",
+                "section": "Fuel System – Inspection",
+                "pageNumber": 47,
+                "engineModel": "X15",
+            }
+        ],
+        "historical_fixes": [
+            {
+                "source": "diagnostic",
+                "resolution": "Replaced worn cutting insert and re-torqued head fasteners to specification; verified cooling system performance.",
+                "diagnostic_steps": "Inspect for coolant leaks, verify torque on critical fasteners, and confirm sensor calibration.",
+            }
+        ],
+        "system_affected": "Fuel and Cooling System",
+        "demo": True,
+        "db_error": db_error,
     }
 
 
@@ -176,7 +244,7 @@ def get_dispatch_brief(order_id: str) -> dict[str, Any]:
     if context.get("error"):
         return {"error": context["error"], "orderId": order_id}
     briefing = run_agent_and_produce_briefing(context)
-    return {
+    resp: dict[str, Any] = {
         "orderId": order_id,
         "context_summary": {
             "equipmentId": context.get("workOrder", {}).get("equipmentId"),
@@ -185,3 +253,10 @@ def get_dispatch_brief(order_id: str) -> dict[str, Any]:
         },
         "mission_briefing": briefing,
     }
+    # Help debugging when demo fallback is used
+    if context.get("demo") or context.get("db_error"):
+        resp["_debug"] = {
+            "demo": bool(context.get("demo")),
+            "db_error": context.get("db_error"),
+        }
+    return resp
