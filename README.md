@@ -25,11 +25,36 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-Copy `.env.example` to `.env` and set:
+### 2.1 Configure `.env` (MongoDB + OpenAI)
 
-- `MONGODB_PASSWORD` – your MongoDB Atlas password (replace `<db_password>` in URI if needed).
-- `MONGODB_DB` – database name (default: `sap_bnac`).
-- `OPENAI_API_KEY` – for agentic dispatch briefing (optional; agent has fallback if missing).
+Copy `.env.example` to `.env` (never commit `.env` to git) and set:
+
+- **MongoDB connection**
+  - Either use the placeholder form and a separate password:
+
+    ```env
+    MONGODB_URI=mongodb+srv://sankethrp_db_user:<db_password>@workorderandconfirmatio.gfkc6h6.mongodb.net/?appName=WorkOrderAndConfirmations
+    MONGODB_PASSWORD=YOUR_ATLAS_PASSWORD
+    MONGODB_DB=sap_bnac
+    ```
+
+    The backend replaces `<db_password>` with `MONGODB_PASSWORD` at runtime.
+
+  - Or put the password directly in the URI (then `MONGODB_PASSWORD` is optional):
+
+    ```env
+    MONGODB_URI=mongodb+srv://sankethrp_db_user:YOUR_ATLAS_PASSWORD@workorderandconfirmatio.gfkc6h6.mongodb.net/sap_bnac?retryWrites=true&w=majority
+    MONGODB_DB=sap_bnac
+    ```
+
+- **OpenAI (optional, for agentic dispatch briefing)**
+
+  ```env
+  OPENAI_API_KEY=sk-...
+  OPENAI_MODEL=gpt-4o
+  ```
+
+  If `OPENAI_API_KEY` is not set, the dispatcher falls back to a rule-based mission briefing.
 
 Start the API:
 
@@ -56,14 +81,41 @@ python scripts/extract_ml_dataset.py -o data/ml_dataset.csv
 python scripts/train_failure_classifier.py
 ```
 
-### 4. (Optional) SAP UI5 frontend
+### 4. SAP UI5 frontend (Work Orders + Dispatcher)
 
 ```bash
 npm install
 npm start
 ```
 
-Then open the URL shown (e.g. http://localhost:8080/webapp/index.html). Use `?orderId=WO-xxxxx` and `?apiBase=http://localhost:8000` if needed.
+The UI5 dev server will print a URL such as:
+
+- `http://localhost:8080/webapp/index.html`
+
+#### 4.1 Launchpad → Work Orders
+
+- Open the URL in a browser.
+- You will see a **Fiori-style tile**: **“Work Orders and Confirmations”**.
+- Click the tile to open the **Work Orders** page:
+  - A **table** of work orders with columns (Work Order, Equipment, Status, Priority, Actual Work).
+  - A **filter bar** above the table:
+    - Status filter (Created / Released / In Progress / Completed / Cancelled)
+    - Priority filter (1–5)
+    - Search by Work Order ID or Equipment ID
+    - Reset button to clear all filters.
+  - A **Confirmations panel** below showing confirmations for the selected work order.
+
+#### 4.2 Work order detail (dispatcher view)
+
+- Select a row in the Work Orders table to navigate to the **dispatcher detail page** for that order.
+- The detail page shows:
+  - **Work Order overview**: order ID, equipment, status, priority, technician, days to resolve.
+  - **Issue & equipment details**: issue description and a telemetry snapshot (temperatures, speed, torque, tool wear).
+  - **Insights**: AI-generated mission briefing (root cause, tools, estimated repair time).
+  - **Documentation**: manual reference snippet.
+  - **Timeline**: chronological list of operations, confirmations, and tool checklist events.
+
+By default, the UI5 app talks to the backend at `http://localhost:8000`. You can override this by passing `?apiBase=http://your-api-host:port` in the URL if needed.
 
 ### 5. Run tests
 

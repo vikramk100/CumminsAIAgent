@@ -9,6 +9,7 @@ sap.ui.define(["sap/ui/core/UIComponent", "sap/ui/model/json/JSONModel"], functi
     init: function () {
       UIComponent.prototype.init.apply(this, arguments);
 
+      // Model for the dispatch / mission briefing detail view
       const oDispatchModel = new JSONModel({
         loading: true,
         error: null,
@@ -25,6 +26,15 @@ sap.ui.define(["sap/ui/core/UIComponent", "sap/ui/model/json/JSONModel"], functi
         },
       });
       this.setModel(oDispatchModel, "dispatch");
+
+      // Model for Work Orders + Confirmations overview
+      const oWorkOrdersModel = new JSONModel({
+        workOrders: [],
+      });
+      this.setModel(oWorkOrdersModel, "wo");
+
+      // Initialize router for navigation between Launchpad, Work Orders list, and detail
+      this.getRouter().initialize();
     },
   });
 });

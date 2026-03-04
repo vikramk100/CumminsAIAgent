@@ -1,0 +1,17 @@
+<mvc:View
+  xmlns:mvc="sap.ui.core.mvc"
+  xmlns="sap.m"
+  controllerName="cummins.dispatcher.controller.Launchpad">
+  <Page title="{i18n>appTitle}">
+    <content>
+      <TileContainer>
+        <StandardTile
+          icon="sap-icon://task"
+          title="Work Orders and Confirmations"
+          info="Review and drill down"
+          press="onNavToWorkOrders" />
+      </TileContainer>
+    </content>
+  </Page>
+</mvc:View>
+

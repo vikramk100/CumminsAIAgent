@@ -14,6 +14,39 @@ from api.agent_tools import _get_db
 router = APIRouter(prefix="/api/v1", tags=["v1"])
 
 
+@router.get("/workorders")
+def list_workorders(limit: int = 100):
+  """
+  Returns a list of WorkOrders with embedded Confirmations.
+  Shape:
+  [
+    {
+      orderId, status, priority, equipmentId, actualWork, orderDate, confirmations: [...]
+    }
+  ]
+  """
+  db = _get_db()
+  # Base work orders list
+  workorders = list(
+    db["workorders"]
+    .find({}, {"_id": 0})
+    .sort("orderDate", -1)
+    .limit(limit)
+  )
+  # All confirmations grouped by orderId
+  confirmations = list(db["confirmations"].find({}, {"_id": 0}))
+  conf_by_order = {}
+  for c in confirmations:
+    oid = c.get("orderId")
+    if not oid:
+      continue
+    conf_by_order.setdefault(oid, []).append(c)
+  for wo in workorders:
+    oid = wo.get("orderId")
+    wo["confirmations"] = conf_by_order.get(oid, [])
+  return {"results": workorders}
+
+
 @router.get("/dispatch-brief/{orderId}")
 def dispatch_brief(orderId: str):
     """

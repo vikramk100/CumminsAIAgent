@@ -20,10 +20,10 @@
   },
   "sap.ui5": {
     "rootView": {
-      "viewName": "cummins.dispatcher.view.Main",
+      "viewName": "cummins.dispatcher.view.App",
       "type": "XML",
       "async": true,
-      "id": "Main"
+      "id": "App"
     },
     "dependencies": {
       "minUI5Version": "1.120.0",
@@ -37,10 +37,51 @@
       "dispatch": {
         "type": "sap.ui.model.json.JSONModel"
       },
+      "wo": {
+        "type": "sap.ui.model.json.JSONModel"
+      },
       "i18n": {
         "type": "sap.ui.model.resource.ResourceModel",
         "settings": {
           "bundleName": "cummins.dispatcher.i18n.i18n"
+        }
+      }
+    },
+    "routing": {
+      "config": {
+        "routerClass": "sap.m.routing.Router",
+        "viewType": "XML",
+        "viewPath": "cummins.dispatcher.view",
+        "controlId": "app",
+        "controlAggregation": "pages",
+        "async": true
+      },
+      "routes": [
+        {
+          "name": "launchpad",
+          "pattern": "",
+          "target": "Launchpad"
+        },
+        {
+          "name": "workOrders",
+          "pattern": "workorders",
+          "target": "WorkOrders"
+        },
+        {
+          "name": "workOrderDetail",
+          "pattern": "workorders/{orderId}",
+          "target": "WorkOrderDetail"
+        }
+      ],
+      "targets": {
+        "Launchpad": {
+          "viewName": "Launchpad"
+        },
+        "WorkOrders": {
+          "viewName": "WorkOrders"
+        },
+        "WorkOrderDetail": {
+          "viewName": "Main"
         }
       }
     }

@@ -21,7 +21,7 @@
                 state="{dispatch>/ui/criticalityState}" />
               <ProgressIndicator
                 width="220px"
-                value="{dispatch>/ui/confidencePercent}"
+                percentValue="{dispatch>/ui/confidencePercent}"
                 displayValue="{dispatch>/ui/confidenceDisplay}"
                 state="{dispatch>/ui/criticalityState}" />
             </VBox>
@@ -31,6 +31,79 @@
     </uxap:headerTitle>
 
     <uxap:sections>
+      <uxap:ObjectPageSection title="Work Order Overview">
+        <uxap:subSections>
+          <uxap:ObjectPageSubSection>
+            <VBox class="sapUiSmallMargin">
+              <layout:SimpleForm
+                editable="false"
+                layout="ResponsiveGridLayout"
+                labelSpanL="4"
+                labelSpanM="4"
+                emptySpanL="1"
+                emptySpanM="1"
+                columnsL="2"
+                columnsM="2">
+                <Label text="Work Order" />
+                <ObjectIdentifier
+                  title="{dispatch>/workOrderDetail/orderId}"
+                  text="{= ${dispatch>/workOrderDetail/orderDate} ? 'Created: ' + ${dispatch>/workOrderDetail/orderDate} : ''}" />
+                <Label text="Equipment" />
+                <Text text="{dispatch>/workOrderDetail/equipmentId}" />
+                <Label text="Status" />
+                <ObjectStatus
+                  text="{dispatch>/workOrderDetail/status}"
+                  state="{= ${dispatch>/workOrderDetail/status} === 'Completed' ? 'Success' : (${dispatch>/workOrderDetail/status} === 'Created' ? 'Information' : 'Warning') }" />
+                <Label text="Priority" />
+                <Text text="{dispatch>/workOrderDetail/priority}" />
+                <Label text="Technician" />
+                <Text text="{dispatch>/workOrderDetail/technician}" />
+                <Label text="Days to Resolve" />
+                <Text text="{dispatch>/workOrderDetail/daysToSolve}" />
+              </layout:SimpleForm>
+            </VBox>
+          </uxap:ObjectPageSubSection>
+          <uxap:ObjectPageSubSection title="Issue & Equipment Details">
+            <VBox class="sapUiSmallMargin">
+              <Panel
+                headerText="Issue Description"
+                expandable="true"
+                expanded="true"
+                class="sapUiSmallMarginBottom">
+                <Text
+                  text="{dispatch>/workOrderDetail/issueDescription}"
+                  wrapping="true" />
+              </Panel>
+              <Panel
+                headerText="Equipment Telemetry Snapshot"
+                expandable="true"
+                expanded="false">
+                <layout:SimpleForm
+                  editable="false"
+                  layout="ResponsiveGridLayout"
+                  labelSpanL="4"
+                  labelSpanM="4"
+                  emptySpanL="1"
+                  emptySpanM="1"
+                  columnsL="2"
+                  columnsM="2">
+                  <Label text="Process Temperature" />
+                  <Text text="{dispatch>/workOrderDetail/telemetry/Process_Temperature}" />
+                  <Label text="Air Temperature" />
+                  <Text text="{dispatch>/workOrderDetail/telemetry/Air_Temperature}" />
+                  <Label text="Rotational Speed" />
+                  <Text text="{dispatch>/workOrderDetail/telemetry/Rotational_Speed}" />
+                  <Label text="Torque" />
+                  <Text text="{dispatch>/workOrderDetail/telemetry/Torque}" />
+                  <Label text="Tool Wear" />
+                  <Text text="{dispatch>/workOrderDetail/telemetry/Tool_Wear}" />
+                </layout:SimpleForm>
+              </Panel>
+            </VBox>
+          </uxap:ObjectPageSubSection>
+        </uxap:subSections>
+      </uxap:ObjectPageSection>
+
       <uxap:ObjectPageSection title="Insights">
         <uxap:subSections>
           <uxap:ObjectPageSubSection>
@@ -55,7 +128,9 @@
                   <CheckBox
                     selected="{dispatch>checked}"
                     select="onPressToolKitCheck">
-                    <core:CustomData key="toolName" value="{dispatch>name}" writeToDom="false" />
+                    <customData>
+                      <core:CustomData key="toolName" value="{dispatch>name}" writeToDom="false" />
+                    </customData>
                   </CheckBox>
                   <DisplayListItem label="{dispatch>name}" value="" />
                 </HBox>
@@ -75,6 +150,33 @@
               class="sapUiSmallMargin">
               <FormattedText htmlText="{dispatch>/ui/manualSnippetHtml}" />
             </Panel>
+          </uxap:ObjectPageSubSection>
+        </uxap:subSections>
+      </uxap:ObjectPageSection>
+
+      <uxap:ObjectPageSection title="Timeline">
+        <uxap:subSections>
+          <uxap:ObjectPageSubSection>
+            <VBox class="sapUiSmallMargin">
+              <List
+                id="TimelineList"
+                headerText="Work Order Timeline"
+                items="{dispatch>/workOrderDetail/timeline}">
+                <CustomListItem>
+                  <VBox class="sapUiSmallMarginBottom">
+                    <HBox justifyContent="SpaceBetween">
+                      <Text
+                        text="{dispatch>title}"
+                        design="Bold" />
+                      <Text text="{dispatch>at}" />
+                    </HBox>
+                    <Text
+                      text="{dispatch>description}"
+                      wrapping="true" />
+                  </VBox>
+                </CustomListItem>
+              </List>
+            </VBox>
           </uxap:ObjectPageSubSection>
         </uxap:subSections>
       </uxap:ObjectPageSection>

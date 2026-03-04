@@ -1,0 +1,109 @@
+<mvc:View
+  xmlns:mvc="sap.ui.core.mvc"
+  xmlns="sap.m"
+  xmlns:core="sap.ui.core"
+  controllerName="cummins.dispatcher.controller.WorkOrders">
+  <Page title="Work Orders and Confirmations" showNavButton="true" navButtonPress="onNavBack">
+    <content>
+      <VBox class="sapUiSmallMargin">
+        <Toolbar>
+          <Title text="Work Orders" level="H2" />
+          <ToolbarSpacer />
+          <Label text="Status" />
+          <Select id="statusFilter" width="10rem" change="onFilterChange">
+            <items>
+              <core:Item key="" text="All" />
+              <core:Item key="Created" text="Created" />
+              <core:Item key="Released" text="Released" />
+              <core:Item key="In Progress" text="In Progress" />
+              <core:Item key="Completed" text="Completed" />
+              <core:Item key="Cancelled" text="Cancelled" />
+            </items>
+          </Select>
+          <ToolbarSpacer />
+          <Label text="Priority" />
+          <Select id="priorityFilter" width="8rem" change="onFilterChange">
+            <items>
+              <core:Item key="" text="All" />
+              <core:Item key="1" text="1 (Highest)" />
+              <core:Item key="2" text="2" />
+              <core:Item key="3" text="3" />
+              <core:Item key="4" text="4" />
+              <core:Item key="5" text="5 (Lowest)" />
+            </items>
+          </Select>
+          <ToolbarSpacer />
+          <SearchField
+            id="WorkOrderSearch"
+            width="20rem"
+            placeholder="Search by Work Order or Equipment"
+            search="onSearch"
+            liveChange="onSearch" />
+          <Button
+            text="Reset"
+            type="Transparent"
+            icon="sap-icon://refresh"
+            press="onClearFilters" />
+        </Toolbar>
+
+        <Table
+          id="WorkOrdersTable"
+          class="sapUiSizeCondensed"
+          mode="SingleSelectMaster"
+          headerText="Work Orders"
+          items="{wo>/workOrders}"
+          selectionChange="onWorkOrderSelect">
+          <columns>
+            <Column width="10rem">
+              <Text text="Work Order" />
+            </Column>
+            <Column width="10rem">
+              <Text text="Equipment" />
+            </Column>
+            <Column width="8rem">
+              <Text text="Status" />
+            </Column>
+            <Column width="6rem" hAlign="End">
+              <Text text="Priority" />
+            </Column>
+            <Column width="8rem" hAlign="End">
+              <Text text="Actual Work (h)" />
+            </Column>
+          </columns>
+          <items>
+            <ColumnListItem type="Inactive">
+              <cells>
+                <ObjectIdentifier
+                  title="{wo>orderId}"
+                  text="{= 'Created: ' + (${wo>orderDate} || '')}" />
+                <Text text="{wo>equipmentId}" />
+                <ObjectStatus
+                  text="{wo>status}"
+                  state="{= ${wo>status} === 'Completed' ? 'Success' : (${wo>status} === 'Created' ? 'Information' : 'Warning') }" />
+                <Text text="{wo>priority}" />
+                <Text text="{wo>actualWork}" />
+              </cells>
+            </ColumnListItem>
+          </items>
+        </Table>
+
+        <Panel
+          id="ConfirmationsPanel"
+          headerText="Confirmations for Selected Work Order"
+          expandable="true"
+          expanded="true"
+          class="sapUiMediumMarginTop">
+          <List
+            id="ConfirmationsList"
+            items="{wo>/selectedConfirmations}">
+            <StandardListItem
+              title="{wo>confirmationText}"
+              description="{= 'Actual Work: ' + (${wo>actualWork} || 0) + ' h'}"
+              icon="sap-icon://accept" />
+          </List>
+        </Panel>
+      </VBox>
+    </content>
+  </Page>
+</mvc:View>
+

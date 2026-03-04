@@ -5,6 +5,7 @@ Agentic AI Dispatcher: builds context from tools and produces Technician Mission
 import json
 import os
 import re
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 try:
@@ -51,6 +52,98 @@ def build_context_package(order_id: str) -> dict[str, Any]:
     engine_model = engine_models[hash(equipment_id) % max(1, len(engine_models))] if engine_models else "X15"
     manuals = query_manuals(fault_code, engine_model=engine_model, limit=5)
     historical = get_historical_fixes(system_affected, limit=5)
+
+    # Extended work order context for UI detail view
+    operations = list(db["operations"].find({"orderId": order_id}, {"_id": 0}))
+    confirmations = list(db["confirmations"].find({"orderId": order_id}, {"_id": 0}))
+    audit_events = list(
+        db["audit_trail"]
+        .find({"orderId": order_id}, {"_id": 0})
+        .sort("timestamp", 1)
+    )
+
+    order_date = wo.get("orderDate")
+    last_conf_dt: Optional[datetime] = None
+    for c in confirmations:
+        dt = c.get("confirmedAt")
+        if isinstance(dt, datetime) and (last_conf_dt is None or dt > last_conf_dt):
+            last_conf_dt = dt
+    end_dt = last_conf_dt or datetime.now(timezone.utc)
+    days_to_solve: Optional[int] = None
+    if isinstance(order_date, datetime):
+        days_to_solve = (end_dt - order_date).days
+
+    issue_description = ""
+    if operations:
+        # Prefer the first operation description as issue summary
+        issue_description = operations[0].get("description") or ""
+
+    technician = None
+    if audit_events:
+        first_user = audit_events[0].get("userId")
+        if first_user:
+            technician = f"Technician {first_user}"
+    if not technician:
+        technician = f"Technician {abs(hash(order_id)) % 50 + 1}"
+
+    timeline: list[dict[str, Any]] = []
+    if isinstance(order_date, datetime):
+        timeline.append(
+            {
+                "type": "status",
+                "title": "Work order created",
+                "description": f"Status: {wo.get('status')}",
+                "at": order_date,
+            }
+        )
+    for op in operations:
+        timeline.append(
+            {
+                "type": "operation",
+                "title": op.get("description") or "Operation",
+                "description": f"Operation {op.get('operationId', '')} - Status: {op.get('status', '')}",
+                "at": op.get("plannedStart") or order_date,
+            }
+        )
+    for c in confirmations:
+        timeline.append(
+            {
+                "type": "confirmation",
+                "title": "Confirmation recorded",
+                "description": c.get("confirmationText") or "",
+                "at": c.get("confirmedAt") or order_date,
+            }
+        )
+    for ev in audit_events:
+        timeline.append(
+            {
+                "type": "audit",
+                "title": "Tool checklist updated",
+                "description": f"{ev.get('toolName')} marked "
+                f"{'checked' if ev.get('checked') else 'unchecked'}"
+                f"{' by ' + str(ev.get('userId')) if ev.get('userId') else ''}",
+                "at": ev.get("timestamp") or order_date,
+            }
+        )
+    # Sort by timestamp where available
+    timeline.sort(key=lambda e: e.get("at") or order_date or datetime.now(timezone.utc))
+
+    work_order_detail = {
+        "orderId": order_id,
+        "status": wo.get("status"),
+        "priority": wo.get("priority"),
+        "equipmentId": equipment_id,
+        "actualWork": wo.get("actualWork"),
+        "orderDate": order_date,
+        "daysToSolve": days_to_solve,
+        "issueDescription": issue_description,
+        "technician": technician,
+        "operations": operations,
+        "confirmations": confirmations,
+        "timeline": timeline,
+        "telemetry": ml_result.get("telemetry") or {},
+    }
+
     return {
         "orderId": order_id,
         "workOrder": {
@@ -59,6 +152,7 @@ def build_context_package(order_id: str) -> dict[str, Any]:
             "equipmentId": equipment_id,
             "actualWork": wo.get("actualWork"),
         },
+        "workOrderDetail": work_order_detail,
         "ml_prediction": ml_result,
         "manuals": manuals,
         "historical_fixes": historical,
@@ -183,5 +277,8 @@ def get_dispatch_brief(order_id: str) -> dict[str, Any]:
             "failure_label": context.get("ml_prediction", {}).get("failure_label"),
             "confidence": context.get("ml_prediction", {}).get("confidence"),
         },
+        "work_order": context.get("workOrder"),
+        "work_order_detail": context.get("workOrderDetail"),
+        "ml_prediction": context.get("ml_prediction"),
         "mission_briefing": briefing,
     }

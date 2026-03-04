@@ -16,7 +16,11 @@ sap.ui.define(
         const fromQuery = params.get("orderId");
         if (fromQuery) return fromQuery;
         const hash = (window.location.hash || "").replace(/^#\/?/, "");
-        return hash || "WO-10000";
+        if (hash) {
+          const segments = hash.split("/");
+          return segments[segments.length - 1] || "WO-10000";
+        }
+        return "WO-10000";
       },
 
       _getApiBase: function () {
