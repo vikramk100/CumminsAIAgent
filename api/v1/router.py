@@ -1,5 +1,7 @@
 """
 API v1: Agentic dispatch briefing endpoint + audit trail + Work Order & Confirmations CRUD.
+
+Updated to use Multi-Agent Architecture with MCP Server integration.
 """
 
 from datetime import datetime, timezone
@@ -8,8 +10,9 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from api.dispatch_agent import get_dispatch_brief, build_context_package, run_chat, suggest_categories_from_description
-from api.agent_tools import _get_db
+# Import from new multi-agent system
+from api.agents.orchestrator import get_dispatch_brief, run_chat, suggest_categories_from_description
+from api.mcp_server import _get_db
 
 router = APIRouter(prefix="/api/v1", tags=["v1"])
 
@@ -344,11 +347,15 @@ class ChatBody(BaseModel):
 def chat(body: ChatBody):
     """
     Chat-style Q&A endpoint for the dispatcher UI.
-    Answers questions about a specific work order / equipment using the same context as the mission briefing.
+    Answers questions about a specific work order / equipment using the multi-agent system.
     """
-    context = build_context_package(body.orderId)
-    if context.get("error"):
-        raise HTTPException(status_code=404, detail=context["error"])
+    # Build minimal context for chat - full dispatch context is built by the orchestrator
+    from api.mcp_server import get_work_order
+    work_order = get_work_order(body.orderId)
+    if work_order.get("error"):
+        raise HTTPException(status_code=404, detail=work_order["error"])
+    
+    context = {"orderId": body.orderId, "work_order": work_order}
     result = run_chat(context, body.question)
     return result
 

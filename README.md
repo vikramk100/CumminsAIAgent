@@ -25,7 +25,7 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-### 2.1 Configure `.env` (MongoDB + Gemini)
+### 2.1 Configure `.env` (MongoDB + GCP Vertex AI)
 
 Copy `.env.example` to `.env` (never commit `.env` to git) and set:
 
@@ -47,14 +47,25 @@ Copy `.env.example` to `.env` (never commit `.env` to git) and set:
     MONGODB_DB=sap_bnac
     ```
 
-- **Gemini (optional, for agentic dispatch briefing; free tier available)**
+- **GCP Vertex AI (for multi-agent dispatch briefing)**
+
+  ```env
+  GCP_PROJECT_ID=workorderaiagent
+  GCP_REGION=us-central1
+  GOOGLE_APPLICATION_CREDENTIALS=D:\path\to\service-account.json
+  VERTEX_MODEL=gemini-2.0-flash-001
+  ```
+
+  Create a service account in GCP Console with Vertex AI permissions and download the JSON key. The system uses GCP Vertex AI with LangChain for the multi-agent orchestration.
+
+- **Legacy Gemini (optional, for backward compatibility)**
 
   ```env
   GEMINI_API_KEY=your_gemini_api_key
   GEMINI_MODEL=gemini-2.0-flash
   ```
 
-  Get an API key at [Google AI Studio](https://aistudio.google.com/apikey). If `GEMINI_API_KEY` is not set, the dispatcher falls back to a rule-based mission briefing.
+  Get an API key at [Google AI Studio](https://aistudio.google.com/apikey). The legacy `dispatch_agent.py` can still use this if Vertex AI is not configured.
 
 Start the API:
 

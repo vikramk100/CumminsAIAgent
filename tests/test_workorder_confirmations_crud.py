@@ -8,7 +8,7 @@ Collections workorders, confirmations, operations are cleared before each test.
 import pytest
 from fastapi.testclient import TestClient
 
-from api.agent_tools import _get_db
+from api.mcp_server import _get_db
 from api.main import app
 
 WORK_ORDERS_COLLECTION = "workorders"

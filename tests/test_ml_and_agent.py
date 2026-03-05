@@ -44,7 +44,7 @@ def test_predict_failure_returns_label_and_confidence(monkeypatch):
 
 def test_agent_tools_query_manuals_extracts_tools(monkeypatch):
     from api import agent_tools
-    from api.dispatch_agent import extract_tools_from_text
+    from api.agents.base import extract_tools_from_text
 
     fake_docs = [
         {

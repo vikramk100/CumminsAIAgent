@@ -1,6 +1,6 @@
 # Software Architecture
 
-High-level structure of the Cummins AI Agent: backend API, agentic dispatcher, ML pipeline, data scripts, and SAP UI5 frontend.
+High-level structure of the Cummins AI Agent: backend API, multi-agent dispatcher, MCP server, ML pipeline, data scripts, and SAP UI5 frontend.
 
 ---
 
@@ -10,25 +10,33 @@ High-level structure of the Cummins AI Agent: backend API, agentic dispatcher, M
 CumminsAIAgent/
 ├── api/                        # FastAPI backend
 │   ├── main.py                 # App entry, CORS, /api/predictions, /api/predict, /api/triggerWorkOrder
-│   ├── criticality.py         # confidence + severity → criticality (0–3)
-│   ├── dispatch_agent.py      # Agentic flow: build_context_package, work_order_detail, Mission Briefing
-│   ├── agent_tools.py         # get_ml_prediction, query_manuals, get_historical_fixes
+│   ├── criticality.py          # confidence + severity → criticality (0–3)
+│   ├── llm_client.py           # GCP Vertex AI LLM client (replaces Gemini API key)
+│   ├── mcp_server.py           # Model Context Protocol server (FastMCP) - MongoDB tools
+│   ├── agents/                 # Multi-Agent System
+│   │   ├── __init__.py         # Package exports
+│   │   ├── base.py             # MCP tool wrappers as LangChain tools
+│   │   ├── orchestrator.py     # Primary Orchestrator Agent
+│   │   ├── diagnostic_agent.py # Sub-agent 1: ML predictions & telemetry
+│   │   └── prescription_agent.py # Sub-agent 2: Manuals & historical fixes
+│   ├── dispatch_agent.py       # [LEGACY] Original monolithic agent (kept for reference)
+│   ├── agent_tools.py          # [LEGACY] Direct MongoDB queries (now in mcp_server.py)
 │   └── v1/
-│       └── router.py          # GET /api/v1/equipments, /api/v1/workorders, /api/v1/dispatch-brief/{orderId}, POST /api/v1/audit-trail
+│       └── router.py           # GET /api/v1/equipments, /api/v1/workorders, /api/v1/dispatch-brief/{orderId}, POST /api/v1/audit-trail
 ├── scripts/                    # Data & ML scripts (Python)
 ├── schemas/                    # Mongoose schemas (Node) for reference
 ├── models/                     # Trained model (e.g. failure_classifier.joblib)
 ├── webapp/                     # SAP UI5 frontend (routed app: Launchpad → Work Orders / Equipments → Detail)
 │   ├── Component.js            # Root component; models: dispatch, wo; router.initialize()
 │   ├── init.js                 # ComponentContainer loads cummins.dispatcher
-│   ├── manifest.json          # Root view: App; routing: launchpad, workorders, workorders/{orderId}, equipments
+│   ├── manifest.json           # Root view: App; routing: launchpad, workorders, workorders/{orderId}, equipments
 │   ├── view/
-│   │   ├── App.view.xml       # Shell: Bar "SAP - Business Network Portal" + App (pages)
-│   │   ├── Launchpad.view.xml # Tiles: Work Orders and Confirmations, Equipments
-│   │   ├── WorkOrders.view.xml# Table with filters; per-row expandable confirmations; row → detail
-│   │   ├── Equipments.view.xml# Equipment list (equipmentId, engineModel, criticality)
-│   │   └── Main.view.xml      # Work order detail: ObjectPageLayout (overview, telemetry, insights, timeline)
-│   └── controller/            # App, Launchpad, WorkOrders, Equipments, Main
+│   │   ├── App.view.xml        # Shell: Bar "SAP - Business Network Portal" + App (pages)
+│   │   ├── Launchpad.view.xml  # Tiles: Work Orders and Confirmations, Equipments
+│   │   ├── WorkOrders.view.xml # Table with filters; per-row expandable confirmations; row → detail
+│   │   ├── Equipments.view.xml # Equipment list (equipmentId, engineModel, criticality)
+│   │   └── Main.view.xml       # Work order detail: ObjectPageLayout (overview, telemetry, insights, timeline)
+│   └── controller/             # App, Launchpad, WorkOrders, Equipments, Main
 └── tests/                      # Pytest (ML, tools, API)
 ```
 
@@ -38,7 +46,7 @@ CumminsAIAgent/
 
 - **Entry:** `uvicorn api.main:app --reload` (default port 8000).
 - **CORS:** Allow all origins for local/dev.
-- **Environment:** `.env` (from `.env.example`): `MONGODB_URI`, `MONGODB_PASSWORD`, `MONGODB_DB`, `GEMINI_API_KEY`, `GEMINI_MODEL`.
+- **Environment:** `.env` (from `.env.example`): `MONGODB_URI`, `MONGODB_PASSWORD`, `MONGODB_DB`, `GCP_PROJECT_ID`, `GCP_REGION`, `GOOGLE_APPLICATION_CREDENTIALS`, `VERTEX_MODEL`.
 
 ### API surface
 
@@ -49,15 +57,138 @@ CumminsAIAgent/
 | `/api/triggerWorkOrder` | POST | Create work order in MongoDB from prediction |
 | `/api/v1/equipments` | GET | List distinct equipments (equipmentId, engineModel, criticalityText, criticalityState); optional `limit` |
 | `/api/v1/workorders` | GET | List work orders with embedded confirmations; optional `limit` |
-| `/api/v1/dispatch-brief/{orderId}` | GET | Agentic Mission Briefing + work order detail (orderId, status, equipmentId, daysToSolve, issueDescription, technician, operations, confirmations, timeline, telemetry) |
+| `/api/v1/dispatch-brief/{orderId}` | GET | **Multi-Agent** Mission Briefing + work order detail (includes `agent_trace` showing orchestrator, sub-agents, MCP tools used) |
 | `/api/v1/audit-trail` | POST | Persist tool/step audit events to `audit_trail` |
 | `/api/v1/chat` | POST | Chat Q&A about work order/equipment; returns answer + thought_process (for model improvement) |
 | `/api/v1/insight-feedback` | POST | Persist thumbs up/down on AI insights → `insight_feedback` for fine-tuning / RLHF |
 
-### Agentic flow
+---
 
-- **dispatch_agent.py:** Loads work order + equipment; builds extended context (operations, confirmations, audit_trail); computes daysToSolve, issueDescription, technician, timeline; builds **work_order_detail**; calls **agent_tools** (ML prediction, manuals search, historical fixes); uses **Google Gemini** to produce Mission Briefing JSON. Response includes `context_summary`, `work_order_detail`, `mission_briefing`.
-- **agent_tools.py:** `get_ml_prediction(machine_id)`, `query_manuals(fault_code)`, `get_historical_fixes(system_affected)`; shared MongoDB connection.
+## Multi-Agent Architecture
+
+The system uses a **multi-agent orchestration pattern** to meet challenge rubric requirements:
+
+### Agent Hierarchy
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    ORCHESTRATOR AGENT                        │
+│  (api/agents/orchestrator.py)                               │
+│  - Receives /dispatch-brief/{orderId} requests              │
+│  - Delegates to sub-agents                                  │
+│  - Synthesizes final Mission Briefing JSON                  │
+└─────────────────────┬───────────────────────────────────────┘
+                      │
+          ┌───────────┴───────────┐
+          │                       │
+          ▼                       ▼
+┌─────────────────────┐ ┌─────────────────────┐
+│  DIAGNOSTIC AGENT   │ │  PRESCRIPTION AGENT │
+│  (Sub-agent 1)      │ │  (Sub-agent 2)      │
+│                     │ │                     │
+│  - ML predictions   │ │  - Manual search    │
+│  - Telemetry data   │ │  - Historical fixes │
+│  - Fault codes      │ │  - Tool-kit list    │
+│  - System affected  │ │  - Repair time      │
+└─────────────────────┘ └─────────────────────┘
+          │                       │
+          └───────────┬───────────┘
+                      │
+                      ▼
+         ┌────────────────────────┐
+         │      MCP SERVER        │
+         │  (api/mcp_server.py)   │
+         │                        │
+         │  MongoDB Tools:        │
+         │  - get_work_order      │
+         │  - get_ml_prediction   │
+         │  - query_manuals       │
+         │  - get_historical_fixes│
+         │  - get_diagnostic_info │
+         │  - get_operations      │
+         │  - get_confirmations   │
+         │  - get_audit_trail     │
+         └────────────────────────┘
+```
+
+### Components
+
+| Component | File | Responsibility |
+|-----------|------|----------------|
+| **Orchestrator Agent** | `api/agents/orchestrator.py` | Coordinates sub-agents, builds work_order_detail, synthesizes mission_briefing |
+| **Diagnostic Agent** | `api/agents/diagnostic_agent.py` | Invokes MCP tools for ML predictions, telemetry analysis, fault code lookup |
+| **Prescription Agent** | `api/agents/prescription_agent.py` | Invokes MCP tools to search manuals, historical fixes, builds tool-kit list |
+| **MCP Server** | `api/mcp_server.py` | FastMCP server exposing MongoDB queries as structured tools |
+| **LLM Client** | `api/llm_client.py` | GCP Vertex AI integration via LangChain |
+
+### Response Structure
+
+The `/api/v1/dispatch-brief/{orderId}` endpoint returns:
+
+```json
+{
+  "orderId": "WO-12501",
+  "context_summary": { "equipmentId": "1", "failure_label": "HDF", "confidence": 0.85 },
+  "work_order": { "status": "CRTD", "priority": "2", "equipmentId": "1" },
+  "work_order_detail": { /* full detail with timeline, telemetry */ },
+  "ml_prediction": { "failure_label": "HDF", "confidence": 0.85, "fault_code": "HDF" },
+  "mission_briefing": {
+    "root_cause_analysis": "...",
+    "required_tools": ["Torque Wrench", "Multimeter", "..."],
+    "estimated_repair_time": 75,
+    "manual_reference_snippet": "...",
+    "thought_process": "..."
+  },
+  "agent_trace": {
+    "orchestrator": "OrchestratorAgent",
+    "sub_agents_invoked": ["DiagnosticAgent", "PrescriptionAgent"],
+    "mcp_tools_used": ["get_work_order", "get_ml_prediction", "query_manuals", "..."]
+  }
+}
+```
+
+---
+
+## Model Context Protocol (MCP) Server
+
+The MCP server (`api/mcp_server.py`) wraps all MongoDB database interactions as structured tools using **FastMCP**. Agents do not query the database directly; they invoke MCP tools.
+
+### MCP Tools
+
+| Tool | Description |
+|------|-------------|
+| `get_work_order(order_id)` | Retrieve work order by ID |
+| `get_machine_log(machine_id)` | Get latest telemetry for equipment |
+| `get_ml_prediction(machine_id)` | Run ML failure prediction |
+| `query_manuals(fault_code, engine_model, limit)` | Search engine manuals |
+| `get_historical_fixes(system_affected, limit)` | Search past repairs |
+| `get_diagnostic_info(fault_code)` | Get diagnostic details |
+| `get_operations_for_order(order_id)` | Get operations for work order |
+| `get_confirmations_for_order(order_id)` | Get confirmations for work order |
+| `get_audit_trail(order_id)` | Get audit events |
+| `get_engine_models()` | List available engine models |
+| `list_work_orders(limit, status_filter)` | List work orders |
+
+---
+
+## GCP Vertex AI Integration
+
+The system uses **Google Cloud Platform Vertex AI** instead of a local Gemini API key.
+
+### Configuration
+
+```env
+GCP_PROJECT_ID=workorderaiagent
+GCP_REGION=us-central1
+GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
+VERTEX_MODEL=gemini-2.0-flash-001
+```
+
+### LLM Client (`api/llm_client.py`)
+
+- Uses `langchain-google-vertexai` for LangChain compatibility
+- Provides `get_vertex_client()` for agent use
+- Supports both agent workflows and direct generation
 
 ---
 

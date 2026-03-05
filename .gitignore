@@ -9,3 +9,7 @@ venv/
 data/
 models/
 *.joblib
+
+# GCP Service Account Keys
+workorderaiagent-*.json
+*.json.key
