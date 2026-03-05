@@ -25,7 +25,7 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-### 2.1 Configure `.env` (MongoDB + OpenAI)
+### 2.1 Configure `.env` (MongoDB + Gemini)
 
 Copy `.env.example` to `.env` (never commit `.env` to git) and set:
 
@@ -47,14 +47,14 @@ Copy `.env.example` to `.env` (never commit `.env` to git) and set:
     MONGODB_DB=sap_bnac
     ```
 
-- **OpenAI (optional, for agentic dispatch briefing)**
+- **Gemini (optional, for agentic dispatch briefing; free tier available)**
 
   ```env
-  OPENAI_API_KEY=sk-...
-  OPENAI_MODEL=gpt-4o
+  GEMINI_API_KEY=your_gemini_api_key
+  GEMINI_MODEL=gemini-2.0-flash
   ```
 
-  If `OPENAI_API_KEY` is not set, the dispatcher falls back to a rule-based mission briefing.
+  Get an API key at [Google AI Studio](https://aistudio.google.com/apikey). If `GEMINI_API_KEY` is not set, the dispatcher falls back to a rule-based mission briefing.
 
 Start the API:
 
@@ -92,22 +92,23 @@ The UI5 dev server will print a URL such as:
 
 - `http://localhost:8080/webapp/index.html`
 
-#### 4.1 Launchpad → Work Orders
+#### 4.1 Launchpad → Work Orders / Equipments
 
 - Open the URL in a browser.
-- You will see a **Fiori-style tile**: **“Work Orders and Confirmations”**.
-- Click the tile to open the **Work Orders** page:
-  - A **table** of work orders with columns (Work Order, Equipment, Status, Priority, Actual Work).
+- You will see a **Launchpad** with two **Fiori-style tiles**: **“Work Orders and Confirmations”** and **“Equipments”**.
+- **Work Orders:** Click the Work Orders tile to open the Work Orders page:
+  - A **table** of work orders with columns (Work Order, Equipment, Status, Priority, Actual Work, Confirmations).
   - A **filter bar** above the table:
     - Status filter (Created / Released / In Progress / Completed / Cancelled)
     - Priority filter (1–5)
     - Search by Work Order ID or Equipment ID
     - Reset button to clear all filters.
-  - A **Confirmations panel** below showing confirmations for the selected work order.
+  - **Confirmations:** Expand a row to see confirmations in an in-row panel; **click the row** to open the work order detail page.
+- **Equipments:** Click the Equipments tile to open a table of equipments (Equipment ID, Engine Model, Criticality).
 
 #### 4.2 Work order detail (dispatcher view)
 
-- Select a row in the Work Orders table to navigate to the **dispatcher detail page** for that order.
+- Click a row in the Work Orders table to navigate to the **dispatcher detail page** for that order.
 - The detail page shows:
   - **Work Order overview**: order ID, equipment, status, priority, technician, days to resolve.
   - **Issue & equipment details**: issue description and a telemetry snapshot (temperatures, speed, torque, tool wear).
@@ -118,6 +119,8 @@ The UI5 dev server will print a URL such as:
 By default, the UI5 app talks to the backend at `http://localhost:8000`. You can override this by passing `?apiBase=http://your-api-host:port` in the URL if needed.
 
 ### 5. Run tests
+
+Tests use **real MongoDB**. The test run uses a separate database so production data is never touched: database name is `sap_bnac_test` (override with `MONGODB_DB_TEST`). Ensure `MONGODB_URI` and `MONGODB_PASSWORD` (if needed) are set in `.env`, then:
 
 ```bash
 pytest -q
@@ -194,6 +197,7 @@ See **[DATABASE.md](DATABASE.md)** for the full database summary. In short:
 - `manuals` – Engine manual text chunks (X15, B6.7, ISB) from Cummins Document Library PDFs
 - `diagnostics` – Vehicle diagnostics (fault codes, symptoms, resolution)
 - `audit_trail` – UI audit events (e.g. tool checklist)
+- `insight_feedback` – Thumbs up/down on AI insights for model improvement; export with `python scripts/export_insight_feedback.py`
 
 Database name: `sap_bnac` (override with `MONGODB_DB`).
 
@@ -205,4 +209,4 @@ Database name: `sap_bnac` (override with `MONGODB_DB`).
 
 - **Extract:** `python scripts/extract_ml_dataset.py -o data/ml_dataset.csv` – flattens MachineLogs + engineModel to CSV.
 - **Train:** `python scripts/train_failure_classifier.py` (or add `xgb` for XGBoost). Saves `models/failure_classifier.joblib`. Use `predict_failure(telemetry_data)` → (failure_label, confidence).
-- **API:** `uvicorn api.main:app --reload`. GET `/api/predictions` returns Fiori-style `d.results` with criticality, confidence, suggestedOperation, manualReference; supports `$top`, `$skip`, `$filter`. POST `/api/predict` for single prediction; POST `/api/triggerWorkOrder` to create a WorkOrder from a prediction.
+- **API:** `uvicorn api.main:app --reload`. GET `/api/predictions` returns Fiori-style `d.results` with criticality, confidence, suggestedOperation, manualReference; supports `$top`, `$skip`, `$filter`. GET `/api/v1/equipments` and GET `/api/v1/workorders` list equipments and work orders. GET `/api/v1/dispatch-brief/{orderId}` returns the agentic mission briefing and work order detail (overview, telemetry, timeline). POST `/api/predict` for single prediction; POST `/api/triggerWorkOrder` to create a WorkOrder from a prediction; POST `/api/v1/audit-trail` to persist tool checklist events.

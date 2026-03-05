@@ -2,20 +2,25 @@
   xmlns:mvc="sap.ui.core.mvc"
   xmlns="sap.m"
   controllerName="cummins.dispatcher.controller.Launchpad">
-  <Page title="{i18n>appTitle}">
+  <Page title="{i18n>appTitle}" showHeader="true">
     <content>
-      <TileContainer id="LaunchpadTiles" class="sapUiSmallMargin">
-        <StandardTile
-          icon="sap-icon://task"
-          title="Work Orders and Confirmations"
-          info="Review and drill down"
-          press="onNavToWorkOrders" />
-        <StandardTile
-          icon="sap-icon://factory"
-          title="Equipments"
-          info="Equipment overview"
-          press="onNavToEquipments" />
-      </TileContainer>
+      <VBox alignItems="Start" justifyContent="Start" width="100%" class="sapUiResponsiveMargin">
+        <Title text="My Home" level="H2" class="sapUiTinyMarginBottom" />
+        <FlexBox id="LaunchpadTiles" justifyContent="Start" alignItems="Start" wrap="Wrap" class="sapUiSmallMarginTop">
+          <GenericTile
+            header="Work Orders and Confirmations"
+            subheader="Review work orders and confirmations"
+            press="onNavToWorkOrders"
+            size="M"
+            class="sapUiTinyMarginEnd sapUiTinyMarginBottom" />
+          <GenericTile
+            header="Equipments"
+            subheader="Equipment overview and criticality"
+            press="onNavToEquipments"
+            size="M"
+            class="sapUiTinyMarginEnd sapUiTinyMarginBottom" />
+        </FlexBox>
+      </VBox>
     </content>
   </Page>
 </mvc:View>

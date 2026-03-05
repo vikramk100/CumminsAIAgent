@@ -6,6 +6,20 @@
   xmlns:core="sap.ui.core"
   controllerName="cummins.dispatcher.controller.Main">
 
+  <VBox fitContainer="true">
+    <Bar>
+      <contentLeft>
+        <Button
+          id="backToWorkOrders"
+          type="Back"
+          text="Back to Work Orders"
+          press="onNavBack" />
+      </contentLeft>
+      <contentRight>
+        <Button text="Edit Work Order" type="Transparent" icon="sap-icon://edit" press="onEditWorkOrder" />
+        <Button text="Delete Work Order" type="Reject" icon="sap-icon://delete" press="onDeleteWorkOrder" />
+      </contentRight>
+    </Bar>
   <uxap:ObjectPageLayout id="ObjectPage" showFooter="false" useIconTabBar="true">
     <uxap:headerTitle>
       <uxap:ObjectPageDynamicHeaderTitle>
@@ -110,10 +124,67 @@
         </uxap:subSections>
       </uxap:ObjectPageSection>
 
+      <uxap:ObjectPageSection title="Confirmations">
+        <uxap:subSections>
+          <uxap:ObjectPageSubSection>
+            <VBox class="sapUiSmallMargin">
+              <Toolbar>
+                <Title text="Confirmations" level="H4" />
+                <ToolbarSpacer />
+                <Button
+                  text="Add Confirmation"
+                  type="Emphasized"
+                  icon="sap-icon://add"
+                  press="onAddConfirmation" />
+              </Toolbar>
+              <Table
+                id="ConfirmationsTable"
+                items="{dispatch>/workOrderDetail/confirmations}">
+                <columns>
+                  <Column width="12rem"><Text text="Confirmation ID" /></Column>
+                  <Column><Text text="Text" /></Column>
+                  <Column width="8rem"><Text text="Status" /></Column>
+                  <Column width="8rem" hAlign="End"><Text text="Actual Work (h)" /></Column>
+                  <Column width="10rem"><Text text="Confirmed At" /></Column>
+                  <Column width="8rem"></Column>
+                </columns>
+                <items>
+                  <ColumnListItem>
+                    <cells>
+                      <Text text="{dispatch>confirmationId}" />
+                      <Text text="{dispatch>confirmationText}" wrapping="true" />
+                      <ObjectStatus text="{dispatch>status}" state="Information" />
+                      <Text text="{dispatch>actualWork}" />
+                      <Text text="{dispatch>confirmedAt}" />
+                      <HBox>
+                        <Button icon="sap-icon://edit" type="Transparent" press="onEditConfirmation" />
+                        <Button icon="sap-icon://delete" type="Transparent" press="onDeleteConfirmation" />
+                      </HBox>
+                    </cells>
+                  </ColumnListItem>
+                </items>
+              </Table>
+            </VBox>
+          </uxap:ObjectPageSubSection>
+        </uxap:subSections>
+      </uxap:ObjectPageSection>
+
       <uxap:ObjectPageSection title="Insights">
         <uxap:subSections>
           <uxap:ObjectPageSubSection>
             <VBox class="sapUiSmallMargin">
+              <HBox justifyContent="SpaceBetween" class="sapUiSmallMarginBottom">
+                <Button
+                  text="Talk to AI"
+                  type="Emphasized"
+                  icon="sap-icon://discussion-2"
+                  press="onOpenAiChat" />
+                <Button
+                  text="Show Thought Process"
+                  type="Transparent"
+                  icon="sap-icon://inspect"
+                  press="onShowThoughtProcess" />
+              </HBox>
               <Text
                 text="{dispatch>/mission_briefing/root_cause_analysis}"
                 wrapping="true" />
@@ -125,23 +196,37 @@
       <uxap:ObjectPageSection title="Preparation">
         <uxap:subSections>
           <uxap:ObjectPageSubSection>
-            <List
-              id="ToolsList"
-              headerText="Required Tools"
-              items="{dispatch>/ui/tools}">
-              <CustomListItem>
-                <HBox alignItems="Center" justifyContent="SpaceBetween" width="100%">
-                  <CheckBox
-                    selected="{dispatch>checked}"
-                    select="onPressToolKitCheck">
-                    <customData>
-                      <core:CustomData key="toolName" value="{dispatch>name}" writeToDom="false" />
-                    </customData>
-                  </CheckBox>
-                  <DisplayListItem label="{dispatch>name}" value="" />
-                </HBox>
-              </CustomListItem>
-            </List>
+            <VBox class="sapUiSmallMargin">
+              <HBox justifyContent="SpaceBetween" class="sapUiSmallMarginBottom">
+                <Button
+                  text="Talk to AI"
+                  type="Emphasized"
+                  icon="sap-icon://discussion-2"
+                  press="onOpenAiChat" />
+                <Button
+                  text="Show Thought Process"
+                  type="Transparent"
+                  icon="sap-icon://inspect"
+                  press="onShowThoughtProcess" />
+              </HBox>
+              <List
+                id="ToolsList"
+                headerText="Required Tools"
+                items="{dispatch>/ui/tools}">
+                <CustomListItem>
+                  <HBox alignItems="Center" justifyContent="SpaceBetween" width="100%">
+                    <CheckBox
+                      selected="{dispatch>checked}"
+                      select="onPressToolKitCheck">
+                      <customData>
+                        <core:CustomData key="toolName" value="{dispatch>name}" writeToDom="false" />
+                      </customData>
+                    </CheckBox>
+                    <DisplayListItem label="{dispatch>name}" value="" />
+                  </HBox>
+                </CustomListItem>
+              </List>
+            </VBox>
           </uxap:ObjectPageSubSection>
         </uxap:subSections>
       </uxap:ObjectPageSection>
@@ -188,5 +273,137 @@
       </uxap:ObjectPageSection>
     </uxap:sections>
   </uxap:ObjectPageLayout>
+
+  <!-- AI Chat dialog -->
+  <Dialog
+    id="AiChatDialog"
+    title="Talk to AI"
+    contentWidth="480px"
+    contentHeight="360px"
+    resizable="true"
+    draggable="true">
+    <content>
+      <VBox class="sapUiSmallMargin">
+        <Text
+          text="Ask any question about this work order or its equipment."
+          wrapping="true" />
+        <TextArea
+          id="AiChatInput"
+          rows="3"
+          width="100%"
+          placeholder="Type your question here..." />
+        <Button
+          text="Ask"
+          type="Emphasized"
+          icon="sap-icon://sys-enter-2"
+          press="onSendAiQuestion"
+          class="sapUiSmallMarginTop" />
+        <Panel
+          headerText="AI answer"
+          expandable="false"
+          class="sapUiSmallMarginTop">
+          <Text
+            text="{dispatch>/ui/chatLastAnswer}"
+            wrapping="true" />
+        </Panel>
+      </VBox>
+    </content>
+    <buttons>
+      <Button text="Close" press="onCloseAiChat" />
+    </buttons>
+  </Dialog>
+
+  <!-- Edit Work Order dialog -->
+  <Dialog id="EditWorkOrderDialog" title="Edit Work Order" contentWidth="400px">
+    <content>
+      <VBox class="sapUiSmallMargin">
+        <Label text="Equipment ID" />
+        <Input id="EditWO_equipmentId" value="" />
+        <Label text="Status" class="sapUiTinyMarginTop" />
+        <Select id="EditWO_status">
+          <core:Item key="Created" text="Created" />
+          <core:Item key="Released" text="Released" />
+          <core:Item key="In Progress" text="In Progress" />
+          <core:Item key="Completed" text="Completed" />
+          <core:Item key="Cancelled" text="Cancelled" />
+        </Select>
+        <Label text="Priority" class="sapUiTinyMarginTop" />
+        <Select id="EditWO_priority">
+          <core:Item key="1" text="1 (Highest)" />
+          <core:Item key="2" text="2" />
+          <core:Item key="3" text="3" />
+          <core:Item key="4" text="4" />
+          <core:Item key="5" text="5 (Lowest)" />
+        </Select>
+        <Label text="Actual Work (hours)" class="sapUiTinyMarginTop" />
+        <Input id="EditWO_actualWork" type="Number" value="0" />
+      </VBox>
+    </content>
+    <buttons>
+      <Button text="Cancel" press="onCloseEditWorkOrder" />
+      <Button text="Save" type="Emphasized" press="onSaveWorkOrder" />
+    </buttons>
+  </Dialog>
+
+  <!-- Add / Edit Confirmation dialog -->
+  <Dialog
+    id="ConfirmationDialog"
+    title="Add Confirmation"
+    contentWidth="420px">
+    <content>
+      <VBox class="sapUiSmallMargin">
+        <Label text="Confirmation Text" />
+        <TextArea id="Confirmation_Text" rows="4" width="100%" value="" />
+        <Label text="Status" class="sapUiTinyMarginTop" />
+        <Select id="Confirmation_Status" selectedKey="Submitted">
+          <core:Item key="Draft" text="Draft" />
+          <core:Item key="Submitted" text="Submitted" />
+          <core:Item key="Approved" text="Approved" />
+        </Select>
+        <Label text="Actual Work (hours)" class="sapUiTinyMarginTop" />
+        <Input id="Confirmation_ActualWork" type="Number" value="0" />
+      </VBox>
+    </content>
+    <buttons>
+      <Button text="Cancel" press="onCloseConfirmationDialog" />
+      <Button text="Save" type="Emphasized" press="onSaveConfirmation" />
+    </buttons>
+  </Dialog>
+
+  <!-- Thought process dialog -->
+  <Dialog
+    id="ThoughtProcessDialog"
+    title="How this insight was generated"
+    contentWidth="520px"
+    resizable="true"
+    draggable="true">
+    <content>
+      <VBox class="sapUiSmallMargin">
+        <Text
+          text="{dispatch>/mission_briefing/thought_process}"
+          wrapping="true" />
+        <HBox
+          justifyContent="Center"
+          class="sapUiSmallMarginTop">
+          <Button
+            icon="sap-icon://thumb-up"
+            type="Transparent"
+            tooltip="This looks correct"
+            press="onThoughtFeedbackUp" />
+          <Button
+            icon="sap-icon://thumb-down"
+            type="Transparent"
+            tooltip="This looks incorrect"
+            press="onThoughtFeedbackDown"
+            class="sapUiTinyMarginBegin" />
+        </HBox>
+      </VBox>
+    </content>
+    <buttons>
+      <Button text="Close" press="onCloseThoughtProcess" />
+    </buttons>
+  </Dialog>
+
+  </VBox>
 </mvc:View>
 

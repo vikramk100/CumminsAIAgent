@@ -25,8 +25,10 @@ def test_predict_failure_returns_label_and_confidence(monkeypatch):
     }
 
     with mock.patch("scripts.train_failure_classifier.joblib.load", return_value=artifact), mock.patch(
-        "scripts.train_failure_classifier.MODEL_PATH", tfc.MODEL_PATH
-    ):
+        "scripts.train_failure_classifier.MODEL_PATH"
+    ) as mock_path:
+        mock_path.exists.return_value = True
+        mock_path.__str__ = lambda _: str(tfc.MODEL_PATH)
         telemetry = {
             "Process_Temperature": 300,
             "Air_Temperature": 290,

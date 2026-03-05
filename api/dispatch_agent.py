@@ -1,5 +1,5 @@
 """
-Agentic AI Dispatcher: builds context from tools and produces Technician Mission Briefing via OpenAI.
+Agentic AI Dispatcher: builds context from tools and produces Technician Mission Briefing via Google Gemini.
 """
 
 import json
@@ -21,14 +21,15 @@ DIAGNOSTICS_COLLECTION = "diagnostics"
 WORK_ORDERS_COLLECTION = "workorders"
 MANUALS_COLLECTION = "manuals"
 
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
 
 MISSION_BRIEFING_SCHEMA = {
     "root_cause_analysis": "string",
     "required_tools": "list of strings, e.g. [Torque Wrench, Multimeter, 10mm Socket]",
     "estimated_repair_time": "number (minutes)",
     "manual_reference_snippet": "string",
+    "thought_process": "string explaining which signals (ML prediction, manuals, historical fixes, timeline) were used",
 }
 
 
@@ -83,8 +84,8 @@ def build_context_package(order_id: str) -> dict[str, Any]:
         except Exception:
             days_to_solve = None
 
-    issue_description = ""
-    if operations:
+    issue_description = (wo.get("issueDescription") or "").strip()
+    if not issue_description and operations:
         # Prefer the first operation description as issue summary
         issue_description = operations[0].get("description") or ""
 
@@ -172,27 +173,30 @@ def build_context_package(order_id: str) -> dict[str, Any]:
 
 def run_agent_and_produce_briefing(context: dict[str, Any]) -> dict[str, Any]:
     """
-    Call OpenAI to produce Technician Mission Briefing JSON from context.
-    If OPENAI_API_KEY is missing, returns a structured fallback from rules.
+    Call Google Gemini to produce Technician Mission Briefing JSON from context.
+    If GEMINI_API_KEY is missing, returns a structured fallback from rules.
     """
-    if not OPENAI_API_KEY:
+    if not GEMINI_API_KEY:
         return _fallback_briefing(context)
     try:
-        import openai
-        client = openai.OpenAI(api_key=OPENAI_API_KEY)
-        prompt = f"""You are a senior technician dispatcher. Given the following context package, produce a Technician Mission Briefing in valid JSON with exactly these keys: root_cause_analysis (string), required_tools (list of tool names, e.g. Torque Wrench, Multimeter, 10mm Socket), estimated_repair_time (number, minutes), manual_reference_snippet (string, a short quote from the manual content provided).
+        from google import genai
+        from google.genai import types
+        client = genai.Client(api_key=GEMINI_API_KEY)
+        prompt = f"""You are a senior technician dispatcher. Given the following context package, produce a Technician Mission Briefing in valid JSON with exactly these keys: root_cause_analysis (string), required_tools (list of tool names, e.g. Torque Wrench, Multimeter, 10mm Socket), estimated_repair_time (number, minutes), manual_reference_snippet (string, a short quote from the manual content provided), thought_process (string explaining in plain language which signals from the context you relied on, such as ML prediction, manuals, historical fixes, and work order timeline).
 
 Context:
 {json.dumps(context, indent=2, default=str)}
 
-Respond with ONLY a single JSON object, no markdown or explanation."""
+Respond with ONLY a single JSON object, no markdown code fences or explanation."""
 
-        resp = client.chat.completions.create(
-            model=OPENAI_MODEL,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.2,
+        response = client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                temperature=0.2,
+            ),
         )
-        text = resp.choices[0].message.content.strip()
+        text = (response.text or "").strip()
         if text.startswith("```"):
             text = text.split("```")[1]
             if text.startswith("json"):
@@ -203,13 +207,14 @@ Respond with ONLY a single JSON object, no markdown or explanation."""
             "required_tools": brief.get("required_tools", []),
             "estimated_repair_time": brief.get("estimated_repair_time", 60),
             "manual_reference_snippet": brief.get("manual_reference_snippet", ""),
+            "thought_process": brief.get("thought_process", ""),
         }
     except Exception as e:
         return _fallback_briefing(context, error=str(e))
 
 
 def _fallback_briefing(context: dict[str, Any], error: Optional[str] = None) -> dict[str, Any]:
-    """Rule-based fallback when OpenAI is unavailable."""
+    """Rule-based fallback when Gemini is unavailable."""
     ml = context.get("ml_prediction") or {}
     manuals = context.get("manuals") or []
     historical = context.get("historical_fixes") or []
@@ -238,8 +243,86 @@ def _fallback_briefing(context: dict[str, Any], error: Optional[str] = None) -> 
         "required_tools": tools[:8],
         "estimated_repair_time": 60,
         "manual_reference_snippet": snippet or "See manual for engine model.",
+        "thought_process": "This briefing was generated from the ML prediction (failure label and confidence), diagnostics/engine manuals, historical fixes for similar systems, and the work order timeline (status, operations, confirmations, and tool checklist).",
         "fallback": True,
         "error": error,
+    }
+
+
+def run_chat(context: dict[str, Any], question: str) -> dict[str, Any]:
+    """
+    Lightweight chat-style Q&A over the same context package used for the mission briefing.
+    Returns JSON with: answer (string), thought_process (string).
+    """
+    if not GEMINI_API_KEY:
+        return _fallback_chat(context, question)
+    try:
+        from google import genai
+        from google.genai import types
+
+        client = genai.Client(api_key=GEMINI_API_KEY)
+        prompt = f"""You are an AI assistant helping a technician and dispatcher.
+You can only answer questions about the following work order, equipment, ML prediction, manuals and historical fixes.
+
+Context:
+{json.dumps(context, indent=2, default=str)}
+
+User question:
+{question}
+
+Respond with ONLY a single JSON object with exactly these keys:
+- answer: string with a concise, helpful answer focused on this work order / equipment
+- thought_process: string explaining at a high level which parts of the context you relied on (for example: ML prediction and confidence, manuals, historical fixes, work order fields, operations, confirmations, or timeline)."""
+
+        response = client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                temperature=0.2,
+            ),
+        )
+        text = (response.text or "").strip()
+        if text.startswith("```"):
+            text = text.split("```")[1]
+            if text.startswith("json"):
+                text = text[4:]
+        parsed = json.loads(text)
+        return {
+            "answer": parsed.get("answer", "I'm sorry, I couldn't generate an answer for that question."),
+            "thought_process": parsed.get("thought_process", ""),
+        }
+    except Exception as e:
+        return _fallback_chat(context, question, error=str(e))
+
+
+def _fallback_chat(context: dict[str, Any], question: str, error: Optional[str] = None) -> dict[str, Any]:
+    """
+    Simple, non-LLM fallback answer based on context fields.
+    Does NOT reveal any hidden chain-of-thought – only surfaces explicit signals from data.
+    """
+    work_order = context.get("workOrder") or {}
+    ml = context.get("ml_prediction") or {}
+    failure_label = ml.get("failure_label") or "No_Failure"
+    equipment_id = work_order.get("equipmentId") or context.get("workOrderDetail", {}).get("equipmentId") or ""
+    status = work_order.get("status") or context.get("workOrderDetail", {}).get("status") or ""
+
+    answer_lines = []
+    if equipment_id:
+        answer_lines.append(f"The question appears to be about equipment {equipment_id}.")
+    if status:
+        answer_lines.append(f"The current work order status is {status}.")
+    if failure_label and failure_label != "No_Failure":
+        answer_lines.append(f"The ML model predicts failure type: {failure_label}.")
+    if not answer_lines:
+        answer_lines.append("I can answer questions about the work order, its equipment, predicted failure, and related manuals.")
+
+    thought = "This answer is based only on visible fields from the work order (equipmentId, status) and the ML prediction label; no additional hidden reasoning was used."
+    if error:
+        thought += f" (The Gemini API was unavailable: {error})"
+
+    return {
+        "answer": " ".join(answer_lines),
+        "thought_process": thought,
     }
 
 
@@ -272,6 +355,60 @@ def extract_tools_from_text(text: str) -> list[str]:
         if s not in found:
             found.append(s)
     return found[:10]
+
+
+def suggest_categories_from_description(issue_description: str) -> list[str]:
+    """
+    Use Gemini to suggest work order categories from an issue description (ML classification step).
+    Returns a list of category labels, e.g. ["Engine", "Cooling", "Electrical"].
+    """
+    if not (issue_description or "").strip():
+        return []
+    if not GEMINI_API_KEY:
+        return _fallback_suggest_categories(issue_description)
+    try:
+        from google import genai
+        from google.genai import types
+        client = genai.Client(api_key=GEMINI_API_KEY)
+        prompt = f"""Given this technician issue description for a work order, suggest 3 to 7 category labels that could classify this issue (e.g. Engine, Cooling, Electrical, Fuel System, Exhaust, Sensors, Hydraulics, Belts, Filters).
+Issue description:
+{issue_description.strip()}
+
+Respond with ONLY a JSON array of strings, no other text. Example: ["Engine", "Cooling"]"""
+
+        response = client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=prompt,
+            config=types.GenerateContentConfig(temperature=0.2),
+        )
+        text = (response.text or "").strip()
+        if text.startswith("```"):
+            text = text.split("```")[1]
+            if text.startswith("json"):
+                text = text[4:]
+        arr = json.loads(text)
+        return [str(x).strip() for x in arr if x][:10]
+    except Exception:
+        return _fallback_suggest_categories(issue_description)
+
+
+def _fallback_suggest_categories(issue_description: str) -> list[str]:
+    """Rule-based category suggestions when Gemini is unavailable."""
+    t = (issue_description or "").lower()
+    out = []
+    if any(x in t for x in ["engine", "overheat", "temperature"]):
+        out.append("Engine")
+    if any(x in t for x in ["coolant", "cooling", "radiator"]):
+        out.append("Cooling")
+    if any(x in t for x in ["electr", "sensor", "wire", "battery"]):
+        out.append("Electrical")
+    if any(x in t for x in ["fuel", "injector", "tank"]):
+        out.append("Fuel System")
+    if any(x in t for x in ["exhaust", "emission"]):
+        out.append("Exhaust")
+    if any(x in t for x in ["belt", "hose", "filter"]):
+        out.extend(["Belts", "Filters"])
+    return out if out else ["Engine", "General"]
 
 
 def get_dispatch_brief(order_id: str) -> dict[str, Any]:

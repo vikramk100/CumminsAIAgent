@@ -46,10 +46,32 @@
             press="onClearFilters" />
         </Toolbar>
 
+        <Toolbar>
+          <ToolbarSpacer />
+          <Button
+            text="Create"
+            type="Emphasized"
+            icon="sap-icon://add"
+            press="onOpenCreateWorkOrder" />
+          <Button
+            text="Edit"
+            type="Transparent"
+            icon="sap-icon://edit"
+            press="onEditWorkOrder"
+            id="btnEditWO" />
+          <Button
+            text="Delete"
+            type="Reject"
+            icon="sap-icon://delete"
+            press="onDeleteSelectedWorkOrder"
+            id="btnDeleteWO" />
+        </Toolbar>
+
         <Table
           id="WorkOrdersTable"
           class="sapUiSizeCondensed"
-          mode="None"
+          mode="SingleSelectLeft"
+          selectionChange="onWorkOrderSelectionChange"
           headerText="Work Orders"
           items="{wo>/workOrders}">
           <columns>
@@ -103,5 +125,96 @@
       </VBox>
     </content>
   </Page>
+
+  <Dialog
+    id="CreateWorkOrderDialog"
+    title="Create Work Order"
+    contentWidth="480px">
+    <content>
+      <VBox class="sapUiSmallMargin">
+        <Label text="Equipment ID" />
+        <Input id="CreateWO_equipmentId" value="" placeholder="e.g. M-001" />
+        <Label text="Issue Description" class="sapUiTinyMarginTop" />
+        <TextArea
+          id="CreateWO_issueDescription"
+          rows="4"
+          width="100%"
+          placeholder="Describe the issue to get category suggestions from ML"
+          value="" />
+        <Button
+          text="Suggest categories (ML)"
+          type="Transparent"
+          icon="sap-icon://competitor"
+          press="onSuggestCategories"
+          class="sapUiTinyMarginTop" />
+        <List
+          id="CreateWO_categoriesList"
+          headerText="Suggested categories (select one or more)"
+          mode="MultiSelect"
+          visible="false"
+          class="sapUiTinyMarginTop">
+          <StandardListItem title="{createForm>name}" selected="{createForm>selected}" />
+        </List>
+        <Label text="Status" class="sapUiTinyMarginTop" />
+        <Select id="CreateWO_status" selectedKey="Created">
+          <core:Item key="Created" text="Created" />
+          <core:Item key="Released" text="Released" />
+          <core:Item key="In Progress" text="In Progress" />
+          <core:Item key="Completed" text="Completed" />
+          <core:Item key="Cancelled" text="Cancelled" />
+        </Select>
+        <Label text="Priority" class="sapUiTinyMarginTop" />
+        <Select id="CreateWO_priority" selectedKey="2">
+          <core:Item key="1" text="1 (Highest)" />
+          <core:Item key="2" text="2" />
+          <core:Item key="3" text="3" />
+          <core:Item key="4" text="4" />
+          <core:Item key="5" text="5 (Lowest)" />
+        </Select>
+        <Label text="Actual Work (hours)" class="sapUiTinyMarginTop" />
+        <Input id="CreateWO_actualWork" type="Number" value="0" />
+      </VBox>
+    </content>
+    <buttons>
+      <Button text="Cancel" press="onCloseCreateWorkOrder" />
+      <Button text="Create" type="Emphasized" press="onCreateWorkOrderSubmit" />
+    </buttons>
+  </Dialog>
+
+  <Dialog
+    id="EditWorkOrderDialog"
+    title="Edit Work Order"
+    contentWidth="480px">
+    <content>
+      <VBox class="sapUiSmallMargin">
+        <Label text="Equipment ID" />
+        <Input id="EditWO_equipmentId" value="" />
+        <Label text="Issue Description" class="sapUiTinyMarginTop" />
+        <TextArea id="EditWO_issueDescription" rows="3" width="100%" value="" />
+        <Label text="Status" class="sapUiTinyMarginTop" />
+        <Select id="EditWO_status">
+          <core:Item key="Created" text="Created" />
+          <core:Item key="Released" text="Released" />
+          <core:Item key="In Progress" text="In Progress" />
+          <core:Item key="Completed" text="Completed" />
+          <core:Item key="Cancelled" text="Cancelled" />
+        </Select>
+        <Label text="Priority" class="sapUiTinyMarginTop" />
+        <Select id="EditWO_priority">
+          <core:Item key="1" text="1 (Highest)" />
+          <core:Item key="2" text="2" />
+          <core:Item key="3" text="3" />
+          <core:Item key="4" text="4" />
+          <core:Item key="5" text="5 (Lowest)" />
+        </Select>
+        <Label text="Actual Work (hours)" class="sapUiTinyMarginTop" />
+        <Input id="EditWO_actualWork" type="Number" value="0" />
+      </VBox>
+    </content>
+    <buttons>
+      <Button text="Cancel" press="onCloseEditWorkOrder" />
+      <Button text="Save" type="Emphasized" press="onSaveWorkOrder" />
+    </buttons>
+  </Dialog>
 </mvc:View>
 
