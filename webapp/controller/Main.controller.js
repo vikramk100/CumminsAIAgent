@@ -14,6 +14,28 @@ sap.ui.define(
       onInit: function () {
         this._dispatchModel = this.getOwnerComponent().getModel("dispatch");
         this._editingConfirmationId = null;
+        
+        // Initialize prep model for Preparation tab
+        this._prepModel = new JSONModel({
+          workOrderId: "",
+          equipmentId: "",
+          recommendedTools: [],
+          recommendedParts: [],
+          selectedToolsCount: 0,
+          selectedPartsCount: 0,
+          selectedPartsTotal: 0,
+          checkoutTools: [],
+          checkoutParts: [],
+          lastOrderId: ""
+        });
+        this.getView().setModel(this._prepModel, "prep");
+        
+        // Initialize models for all tools/parts (for Add dialogs)
+        this._allToolsModel = new JSONModel({ results: [] });
+        this._allPartsModel = new JSONModel({ results: [] });
+        this.getView().setModel(this._allToolsModel, "allTools");
+        this.getView().setModel(this._allPartsModel, "allParts");
+        
         this._loadDispatchBrief();
       },
 
@@ -216,6 +238,9 @@ sap.ui.define(
           };
 
           this._dispatchModel.setData({ ...this._dispatchModel.getData(), ...data }, true);
+          
+          // Also load preparation recommendations
+          this._loadRecommendedPrep();
         } catch (e) {
           this._dispatchModel.setProperty("/error", String(e?.message || e));
           MessageToast.show("Failed to load dispatch brief.");
@@ -562,6 +587,402 @@ sap.ui.define(
           // eslint-disable-next-line no-console
           console.log("Audit trail failed", e);
         }
+      },
+
+      // ========================================
+      // Preparation Tab - Tools & Spare Parts
+      // ========================================
+
+      _loadRecommendedPrep: async function () {
+        const orderId = this._getOrderId();
+        const base = this._getApiBase();
+        
+        try {
+          const res = await fetch(`${base}/api/v1/workorders/${encodeURIComponent(orderId)}/recommended-prep`, {
+            method: "GET",
+            headers: { "Accept": "application/json" }
+          });
+          
+          if (!res.ok) {
+            throw new Error(`API error ${res.status}`);
+          }
+          
+          const data = await res.json();
+          
+          // Use the data as-is (already has selected/hasItem from API)
+          const tools = data.recommendedTools || [];
+          const parts = data.recommendedParts || [];
+          
+          this._prepModel.setProperty("/workOrderId", orderId);
+          this._prepModel.setProperty("/equipmentId", data.equipmentId || "");
+          this._prepModel.setProperty("/recommendedTools", tools);
+          this._prepModel.setProperty("/recommendedParts", parts);
+          this._updateCheckoutSummary();
+          
+        } catch (e) {
+          // eslint-disable-next-line no-console
+          console.error("Failed to load recommended prep", e);
+          MessageToast.show("Failed to load preparation recommendations.");
+        }
+      },
+
+      _loadAllToolsAndParts: async function () {
+        const base = this._getApiBase();
+        
+        try {
+          const [toolsRes, partsRes] = await Promise.all([
+            fetch(`${base}/api/v1/tools`, { headers: { "Accept": "application/json" } }),
+            fetch(`${base}/api/v1/spare-parts`, { headers: { "Accept": "application/json" } })
+          ]);
+          
+          if (toolsRes.ok) {
+            const toolsData = await toolsRes.json();
+            this._allToolsModel.setProperty("/results", toolsData.results || []);
+          }
+          
+          if (partsRes.ok) {
+            const partsData = await partsRes.json();
+            this._allPartsModel.setProperty("/results", partsData.results || []);
+          }
+        } catch (e) {
+          // eslint-disable-next-line no-console
+          console.error("Failed to load all tools/parts", e);
+        }
+      },
+
+      _updateCheckoutSummary: function () {
+        const tools = this._prepModel.getProperty("/recommendedTools") || [];
+        const parts = this._prepModel.getProperty("/recommendedParts") || [];
+        
+        const selectedTools = tools.filter(t => t.selected && !t.hasItem);
+        const selectedParts = parts.filter(p => p.selected && !p.hasItem);
+        
+        const partsTotal = selectedParts.reduce((sum, p) => sum + (p.unitPrice || 0), 0);
+        
+        this._prepModel.setProperty("/selectedToolsCount", selectedTools.length);
+        this._prepModel.setProperty("/selectedPartsCount", selectedParts.length);
+        this._prepModel.setProperty("/selectedPartsTotal", partsTotal.toFixed(2));
+        this._prepModel.setProperty("/checkoutTools", selectedTools);
+        this._prepModel.setProperty("/checkoutParts", selectedParts);
+      },
+
+      onSelectAllTools: function () {
+        const tools = this._prepModel.getProperty("/recommendedTools") || [];
+        tools.forEach(t => { t.selected = true; });
+        this._prepModel.setProperty("/recommendedTools", tools);
+        this._updateCheckoutSummary();
+        
+        // Update table selection
+        const table = this.byId("ToolsTable");
+        if (table) {
+          table.selectAll();
+        }
+      },
+
+      onDeselectAllTools: function () {
+        const tools = this._prepModel.getProperty("/recommendedTools") || [];
+        tools.forEach(t => { t.selected = false; });
+        this._prepModel.setProperty("/recommendedTools", tools);
+        this._updateCheckoutSummary();
+        
+        // Update table selection
+        const table = this.byId("ToolsTable");
+        if (table) {
+          table.removeSelections(true);
+        }
+      },
+
+      onSelectAllParts: function () {
+        const parts = this._prepModel.getProperty("/recommendedParts") || [];
+        parts.forEach(p => { p.selected = true; });
+        this._prepModel.setProperty("/recommendedParts", parts);
+        this._updateCheckoutSummary();
+        
+        // Update table selection
+        const table = this.byId("PartsTable");
+        if (table) {
+          table.selectAll();
+        }
+      },
+
+      onDeselectAllParts: function () {
+        const parts = this._prepModel.getProperty("/recommendedParts") || [];
+        parts.forEach(p => { p.selected = false; });
+        this._prepModel.setProperty("/recommendedParts", parts);
+        this._updateCheckoutSummary();
+        
+        // Update table selection
+        const table = this.byId("PartsTable");
+        if (table) {
+          table.removeSelections(true);
+        }
+      },
+
+      onToolSelectionChange: function (oEvent) {
+        const table = oEvent.getSource();
+        const selectedItems = table.getSelectedItems();
+        const tools = this._prepModel.getProperty("/recommendedTools") || [];
+        
+        // Reset all selections
+        tools.forEach(t => { t.selected = false; });
+        
+        // Mark selected items
+        selectedItems.forEach(item => {
+          const ctx = item.getBindingContext("prep");
+          if (ctx) {
+            const idx = parseInt(ctx.getPath().split("/").pop(), 10);
+            if (!isNaN(idx) && tools[idx]) {
+              tools[idx].selected = true;
+            }
+          }
+        });
+        
+        this._prepModel.setProperty("/recommendedTools", tools);
+        this._updateCheckoutSummary();
+      },
+
+      onPartSelectionChange: function (oEvent) {
+        const table = oEvent.getSource();
+        const selectedItems = table.getSelectedItems();
+        const parts = this._prepModel.getProperty("/recommendedParts") || [];
+        
+        // Reset all selections
+        parts.forEach(p => { p.selected = false; });
+        
+        // Mark selected items
+        selectedItems.forEach(item => {
+          const ctx = item.getBindingContext("prep");
+          if (ctx) {
+            const idx = parseInt(ctx.getPath().split("/").pop(), 10);
+            if (!isNaN(idx) && parts[idx]) {
+              parts[idx].selected = true;
+            }
+          }
+        });
+        
+        this._prepModel.setProperty("/recommendedParts", parts);
+        this._updateCheckoutSummary();
+      },
+
+      onToolHasItemChange: function (oEvent) {
+        const checkbox = oEvent.getSource();
+        const selected = oEvent.getParameter("selected");
+        const ctx = checkbox.getBindingContext("prep");
+        
+        if (ctx) {
+          const path = ctx.getPath();
+          this._prepModel.setProperty(path + "/hasItem", selected);
+          this._updateCheckoutSummary();
+          
+          if (selected) {
+            const toolName = this._prepModel.getProperty(path + "/name");
+            MessageToast.show(`Marked "${toolName}" as already available`);
+          }
+        }
+      },
+
+      onPartHasItemChange: function (oEvent) {
+        const checkbox = oEvent.getSource();
+        const selected = oEvent.getParameter("selected");
+        const ctx = checkbox.getBindingContext("prep");
+        
+        if (ctx) {
+          const path = ctx.getPath();
+          this._prepModel.setProperty(path + "/hasItem", selected);
+          this._updateCheckoutSummary();
+          
+          if (selected) {
+            const partName = this._prepModel.getProperty(path + "/name");
+            MessageToast.show(`Marked "${partName}" as already in stock`);
+          }
+        }
+      },
+
+      // Add Tool Dialog
+      onAddTool: function () {
+        this._loadAllToolsAndParts();
+        this.byId("AddToolDialog")?.open();
+      },
+
+      onConfirmAddTool: function () {
+        const select = this.byId("addToolSelect");
+        const selectedKey = select?.getSelectedKey();
+        
+        if (!selectedKey) {
+          MessageToast.show("Please select a tool.");
+          return;
+        }
+        
+        const allTools = this._allToolsModel.getProperty("/results") || [];
+        const tool = allTools.find(t => t.toolId === selectedKey);
+        
+        if (tool) {
+          const currentTools = this._prepModel.getProperty("/recommendedTools") || [];
+          
+          // Check if already in list
+          if (currentTools.some(t => t.toolId === tool.toolId)) {
+            MessageToast.show("This tool is already in the list.");
+          } else {
+            currentTools.push({
+              ...tool,
+              selected: true,
+              hasItem: false
+            });
+            this._prepModel.setProperty("/recommendedTools", currentTools);
+            this._updateCheckoutSummary();
+            MessageToast.show(`Added "${tool.name}" to preparation list.`);
+          }
+        }
+        
+        this.byId("AddToolDialog")?.close();
+      },
+
+      onCancelAddTool: function () {
+        this.byId("AddToolDialog")?.close();
+      },
+
+      // Add Part Dialog
+      onAddPart: function () {
+        this._loadAllToolsAndParts();
+        this.byId("AddPartDialog")?.open();
+      },
+
+      onConfirmAddPart: function () {
+        const select = this.byId("addPartSelect");
+        const selectedKey = select?.getSelectedKey();
+        
+        if (!selectedKey) {
+          MessageToast.show("Please select a spare part.");
+          return;
+        }
+        
+        const allParts = this._allPartsModel.getProperty("/results") || [];
+        const part = allParts.find(p => p.partId === selectedKey);
+        
+        if (part) {
+          const currentParts = this._prepModel.getProperty("/recommendedParts") || [];
+          
+          // Check if already in list
+          if (currentParts.some(p => p.partId === part.partId)) {
+            MessageToast.show("This part is already in the list.");
+          } else {
+            currentParts.push({
+              ...part,
+              selected: true,
+              hasItem: false
+            });
+            this._prepModel.setProperty("/recommendedParts", currentParts);
+            this._updateCheckoutSummary();
+            MessageToast.show(`Added "${part.name}" to preparation list.`);
+          }
+        }
+        
+        this.byId("AddPartDialog")?.close();
+      },
+
+      onCancelAddPart: function () {
+        this.byId("AddPartDialog")?.close();
+      },
+
+      // Checkout
+      onProceedToCheckout: function () {
+        const toolsCount = this._prepModel.getProperty("/selectedToolsCount") || 0;
+        const partsCount = this._prepModel.getProperty("/selectedPartsCount") || 0;
+        
+        if (toolsCount === 0 && partsCount === 0) {
+          MessageToast.show("Please select at least one tool or spare part.");
+          return;
+        }
+        
+        this.byId("CheckoutDialog")?.open();
+      },
+
+      onCloseCheckout: function () {
+        this.byId("CheckoutDialog")?.close();
+      },
+
+      onPlaceOrder: async function () {
+        const base = this._getApiBase();
+        const workOrderId = this._prepModel.getProperty("/workOrderId");
+        const checkoutTools = this._prepModel.getProperty("/checkoutTools") || [];
+        const checkoutParts = this._prepModel.getProperty("/checkoutParts") || [];
+        const notes = this.byId("checkoutNotes")?.getValue() || "";
+        
+        // Build items array
+        const items = [];
+        
+        checkoutTools.forEach(tool => {
+          items.push({
+            itemType: "tool",
+            itemId: tool.toolId,
+            name: tool.name,
+            quantity: 1,
+            unitPrice: 0,
+            status: "pending"
+          });
+        });
+        
+        checkoutParts.forEach(part => {
+          items.push({
+            itemType: "spare_part",
+            itemId: part.partId,
+            name: part.name,
+            quantity: 1,
+            unitPrice: part.unitPrice || 0,
+            status: "pending"
+          });
+        });
+        
+        try {
+          const res = await fetch(`${base}/api/v1/prep-orders`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Accept": "application/json"
+            },
+            body: JSON.stringify({
+              workOrderId: workOrderId,
+              items: items,
+              notes: notes,
+              technicianId: window.localStorage.getItem("USER_ID") || "technician-01"
+            })
+          });
+          
+          if (!res.ok) {
+            const t = await res.text();
+            throw new Error(`API error ${res.status}: ${t}`);
+          }
+          
+          const orderData = await res.json();
+          this._prepModel.setProperty("/lastOrderId", orderData.prepOrderId || "ORD-" + Date.now());
+          
+          // Close checkout and show success
+          this.byId("CheckoutDialog")?.close();
+          this.byId("OrderSuccessDialog")?.open();
+          
+          // Clear selections
+          const tools = this._prepModel.getProperty("/recommendedTools") || [];
+          const parts = this._prepModel.getProperty("/recommendedParts") || [];
+          tools.forEach(t => { t.selected = false; });
+          parts.forEach(p => { p.selected = false; });
+          this._prepModel.setProperty("/recommendedTools", tools);
+          this._prepModel.setProperty("/recommendedParts", parts);
+          this._updateCheckoutSummary();
+          
+          // Clear table selections
+          this.byId("ToolsTable")?.removeSelections(true);
+          this.byId("PartsTable")?.removeSelections(true);
+          this.byId("checkoutNotes")?.setValue("");
+          
+        } catch (e) {
+          // eslint-disable-next-line no-console
+          console.error("Failed to place order", e);
+          MessageToast.show("Failed to place order. Please try again.");
+        }
+      },
+
+      onCloseOrderSuccess: function () {
+        this.byId("OrderSuccessDialog")?.close();
       }
     });
   }

@@ -195,37 +195,217 @@
 
       <uxap:ObjectPageSection title="Preparation">
         <uxap:subSections>
-          <uxap:ObjectPageSubSection>
+          <!-- Technician Tools Section -->
+          <uxap:ObjectPageSubSection title="Technician Tools">
             <VBox class="sapUiSmallMargin">
-              <HBox justifyContent="SpaceBetween" class="sapUiSmallMarginBottom">
-                <Button
-                  text="Talk to AI"
-                  type="Emphasized"
-                  icon="sap-icon://discussion-2"
-                  press="onOpenAiChat" />
-                <Button
-                  text="Show Thought Process"
-                  type="Transparent"
-                  icon="sap-icon://inspect"
-                  press="onShowThoughtProcess" />
+              <HBox justifyContent="SpaceBetween" alignItems="Center" class="sapUiSmallMarginBottom">
+                <HBox>
+                  <Button
+                    text="Talk to AI"
+                    type="Emphasized"
+                    icon="sap-icon://discussion-2"
+                    press="onOpenAiChat"
+                    class="sapUiTinyMarginEnd" />
+                  <Button
+                    text="Show Thought Process"
+                    type="Transparent"
+                    icon="sap-icon://inspect"
+                    press="onShowThoughtProcess" />
+                </HBox>
+                <HBox>
+                  <Button
+                    text="Select All"
+                    type="Transparent"
+                    icon="sap-icon://multiselect-all"
+                    press="onSelectAllTools"
+                    class="sapUiTinyMarginEnd" />
+                  <Button
+                    text="Deselect All"
+                    type="Transparent"
+                    icon="sap-icon://multiselect-none"
+                    press="onDeselectAllTools"
+                    class="sapUiTinyMarginEnd" />
+                  <Button
+                    id="addToolBtn"
+                    text="Add Tool"
+                    type="Transparent"
+                    icon="sap-icon://add"
+                    press="onAddTool" />
+                </HBox>
               </HBox>
-              <List
-                id="ToolsList"
-                headerText="Required Tools"
-                items="{dispatch>/ui/tools}">
-                <CustomListItem>
-                  <HBox alignItems="Center" justifyContent="SpaceBetween" width="100%">
-                    <CheckBox
-                      selected="{dispatch>checked}"
-                      select="onPressToolKitCheck">
-                      <customData>
-                        <core:CustomData key="toolName" value="{dispatch>name}" writeToDom="false" />
-                      </customData>
-                    </CheckBox>
-                    <DisplayListItem label="{dispatch>name}" value="" />
+              <Table
+                id="ToolsTable"
+                items="{prep>/recommendedTools}"
+                mode="MultiSelect"
+                selectionChange="onToolSelectionChange"
+                growing="true"
+                growingThreshold="10">
+                <headerToolbar>
+                  <OverflowToolbar>
+                    <Title text="Required Tools" level="H4" />
+                    <ToolbarSpacer />
+                    <Label text="Selected: " />
+                    <ObjectNumber number="{prep>/selectedToolsCount}" unit="tools" emphasized="true" />
+                  </OverflowToolbar>
+                </headerToolbar>
+                <columns>
+                  <Column width="40%">
+                    <Text text="Tool Name" />
+                  </Column>
+                  <Column width="20%">
+                    <Text text="Category" />
+                  </Column>
+                  <Column width="15%">
+                    <Text text="Location" />
+                  </Column>
+                  <Column width="15%">
+                    <Text text="Availability" />
+                  </Column>
+                  <Column width="10%" hAlign="Center">
+                    <Text text="Have It" />
+                  </Column>
+                </columns>
+                <items>
+                  <ColumnListItem>
+                    <cells>
+                      <Text text="{prep>name}" />
+                      <Text text="{prep>category}" />
+                      <Text text="{prep>location}" />
+                      <ObjectStatus
+                        text="{prep>availability}"
+                        state="{= ${prep>availability} === 'in_stock' ? 'Success' : (${prep>availability} === 'low_stock' ? 'Warning' : 'Error')}"
+                        icon="{= ${prep>availability} === 'in_stock' ? 'sap-icon://sys-enter-2' : (${prep>availability} === 'low_stock' ? 'sap-icon://alert' : 'sap-icon://error')}" />
+                      <CheckBox
+                        selected="{prep>hasItem}"
+                        select="onToolHasItemChange">
+                        <customData>
+                          <core:CustomData key="toolId" value="{prep>toolId}" writeToDom="false" />
+                        </customData>
+                      </CheckBox>
+                    </cells>
+                  </ColumnListItem>
+                </items>
+              </Table>
+            </VBox>
+          </uxap:ObjectPageSubSection>
+
+          <!-- Spare Parts Section -->
+          <uxap:ObjectPageSubSection title="Spare Parts">
+            <VBox class="sapUiSmallMargin">
+              <HBox justifyContent="End" alignItems="Center" class="sapUiSmallMarginBottom">
+                <Button
+                  text="Select All"
+                  type="Transparent"
+                  icon="sap-icon://multiselect-all"
+                  press="onSelectAllParts"
+                  class="sapUiTinyMarginEnd" />
+                <Button
+                  text="Deselect All"
+                  type="Transparent"
+                  icon="sap-icon://multiselect-none"
+                  press="onDeselectAllParts"
+                  class="sapUiTinyMarginEnd" />
+                <Button
+                  id="addPartBtn"
+                  text="Add Part"
+                  type="Transparent"
+                  icon="sap-icon://add"
+                  press="onAddPart" />
+              </HBox>
+              <Table
+                id="PartsTable"
+                items="{prep>/recommendedParts}"
+                mode="MultiSelect"
+                selectionChange="onPartSelectionChange"
+                growing="true"
+                growingThreshold="10">
+                <headerToolbar>
+                  <OverflowToolbar>
+                    <Title text="Recommended Spare Parts" level="H4" />
+                    <ToolbarSpacer />
+                    <Label text="Selected: " />
+                    <ObjectNumber number="{prep>/selectedPartsCount}" unit="parts" emphasized="true" />
+                    <ToolbarSeparator />
+                    <Label text="Total: " />
+                    <ObjectNumber number="{prep>/selectedPartsTotal}" unit="USD" emphasized="true" state="Information" />
+                  </OverflowToolbar>
+                </headerToolbar>
+                <columns>
+                  <Column width="30%">
+                    <Text text="Part Name" />
+                  </Column>
+                  <Column width="15%">
+                    <Text text="Part Number" />
+                  </Column>
+                  <Column width="12%">
+                    <Text text="Category" />
+                  </Column>
+                  <Column width="10%" hAlign="Right">
+                    <Text text="Unit Price" />
+                  </Column>
+                  <Column width="13%">
+                    <Text text="Availability" />
+                  </Column>
+                  <Column width="10%">
+                    <Text text="Lead Time" />
+                  </Column>
+                  <Column width="10%" hAlign="Center">
+                    <Text text="Have It" />
+                  </Column>
+                </columns>
+                <items>
+                  <ColumnListItem>
+                    <cells>
+                      <Text text="{prep>name}" />
+                      <Text text="{prep>partNumber}" />
+                      <Text text="{prep>category}" />
+                      <ObjectNumber number="{prep>unitPrice}" unit="USD" />
+                      <ObjectStatus
+                        text="{prep>availability}"
+                        state="{= ${prep>availability} === 'in_stock' ? 'Success' : (${prep>availability} === 'low_stock' ? 'Warning' : 'Error')}"
+                        icon="{= ${prep>availability} === 'in_stock' ? 'sap-icon://sys-enter-2' : (${prep>availability} === 'low_stock' ? 'sap-icon://alert' : 'sap-icon://error')}" />
+                      <Text text="{prep>leadTimeDays} days" />
+                      <CheckBox
+                        selected="{prep>hasItem}"
+                        select="onPartHasItemChange">
+                        <customData>
+                          <core:CustomData key="partId" value="{prep>partId}" writeToDom="false" />
+                        </customData>
+                      </CheckBox>
+                    </cells>
+                  </ColumnListItem>
+                </items>
+              </Table>
+            </VBox>
+          </uxap:ObjectPageSubSection>
+
+          <!-- Checkout Section -->
+          <uxap:ObjectPageSubSection title="Checkout">
+            <VBox class="sapUiSmallMargin">
+              <Panel headerText="Order Summary" class="sapUiSmallMarginBottom">
+                <VBox class="sapUiSmallMargin">
+                  <HBox justifyContent="SpaceBetween" class="sapUiTinyMarginBottom">
+                    <Text text="Selected Tools:" />
+                    <Text text="{prep>/selectedToolsCount}" design="Bold" />
                   </HBox>
-                </CustomListItem>
-              </List>
+                  <HBox justifyContent="SpaceBetween" class="sapUiTinyMarginBottom">
+                    <Text text="Selected Spare Parts:" />
+                    <Text text="{prep>/selectedPartsCount}" design="Bold" />
+                  </HBox>
+                  <HBox justifyContent="SpaceBetween" class="sapUiTinyMarginBottom">
+                    <Text text="Total Parts Cost:" />
+                    <ObjectNumber number="{prep>/selectedPartsTotal}" unit="USD" emphasized="true" state="Information" />
+                  </HBox>
+                </VBox>
+              </Panel>
+              <HBox justifyContent="Center">
+                <Button
+                  text="Proceed to Checkout"
+                  type="Emphasized"
+                  icon="sap-icon://cart"
+                  press="onProceedToCheckout"
+                  enabled="{= ${prep>/selectedToolsCount} > 0 || ${prep>/selectedPartsCount} > 0}" />
+              </HBox>
             </VBox>
           </uxap:ObjectPageSubSection>
         </uxap:subSections>
@@ -377,39 +557,58 @@
   <!-- AI Chat dialog -->
   <Dialog
     id="AiChatDialog"
-    title="Talk to AI"
-    contentWidth="480px"
-    contentHeight="360px"
+    title="Talk to AI Assistant"
+    contentWidth="550px"
+    contentHeight="480px"
     resizable="true"
-    draggable="true">
+    draggable="true"
+    verticalScrolling="false">
     <content>
-      <VBox class="sapUiSmallMargin">
-        <Text
-          text="Ask any question about this work order or its equipment."
-          wrapping="true" />
-        <TextArea
-          id="AiChatInput"
-          rows="3"
-          width="100%"
-          placeholder="Type your question here..." />
-        <Button
-          text="Ask"
-          type="Emphasized"
-          icon="sap-icon://sys-enter-2"
-          press="onSendAiQuestion"
-          class="sapUiSmallMarginTop" />
+      <VBox height="100%" class="sapUiSmallMargin">
+        <!-- Header info -->
+        <HBox alignItems="Center" class="sapUiTinyMarginBottom">
+          <core:Icon src="sap-icon://da-2" size="1.5rem" color="#0854a0" class="sapUiTinyMarginEnd" />
+          <Text text="Ask any question about this work order, equipment, or repair procedures." wrapping="true" />
+        </HBox>
+        
+        <!-- Question input -->
+        <VBox class="sapUiTinyMarginTop">
+          <Label text="Your Question" design="Bold" />
+          <TextArea
+            id="AiChatInput"
+            rows="3"
+            width="100%"
+            placeholder="e.g., What are the common causes of this fault code?" />
+          <Button
+            text="Ask AI"
+            type="Emphasized"
+            icon="sap-icon://initiative"
+            press="onSendAiQuestion"
+            class="sapUiSmallMarginTop" />
+        </VBox>
+        
+        <!-- Answer section with scroll -->
         <Panel
-          headerText="AI answer"
+          headerText="AI Response"
           expandable="false"
-          class="sapUiSmallMarginTop">
-          <Text
-            text="{dispatch>/ui/chatLastAnswer}"
-            wrapping="true" />
+          class="sapUiSmallMarginTop"
+          height="220px">
+          <ScrollContainer
+            height="100%"
+            width="100%"
+            vertical="true"
+            horizontal="false">
+            <VBox class="sapUiTinyMargin">
+              <FormattedText
+                htmlText="{path: 'dispatch>/ui/chatLastAnswer', formatter: '.formatter.textToHtml'}"
+                width="100%" />
+            </VBox>
+          </ScrollContainer>
         </Panel>
       </VBox>
     </content>
     <buttons>
-      <Button text="Close" press="onCloseAiChat" />
+      <Button text="Close" press="onCloseAiChat" type="Transparent" />
     </buttons>
   </Dialog>
 
@@ -473,34 +672,222 @@
   <!-- Thought process dialog -->
   <Dialog
     id="ThoughtProcessDialog"
-    title="How this insight was generated"
-    contentWidth="520px"
+    title="AI Reasoning Process"
+    contentWidth="650px"
+    contentHeight="500px"
     resizable="true"
-    draggable="true">
+    draggable="true"
+    verticalScrolling="false">
     <content>
-      <VBox class="sapUiSmallMargin">
-        <Text
-          text="{dispatch>/mission_briefing/thought_process}"
-          wrapping="true" />
+      <VBox height="100%" class="sapUiSmallMargin">
+        <!-- Header -->
+        <HBox alignItems="Center" class="sapUiTinyMarginBottom">
+          <core:Icon src="sap-icon://process" size="1.5rem" color="#0854a0" class="sapUiTinyMarginEnd" />
+          <Title text="How this insight was generated" level="H5" />
+        </HBox>
+        
+        <!-- Scrollable thought process content -->
+        <ScrollContainer
+          height="380px"
+          width="100%"
+          vertical="true"
+          horizontal="false"
+          class="sapUiTinyMarginTop">
+          <VBox class="sapUiSmallMargin">
+            <FormattedText
+              htmlText="{path: 'dispatch>/mission_briefing/thought_process', formatter: '.formatter.textToHtml'}"
+              width="100%" />
+          </VBox>
+        </ScrollContainer>
+        
+        <!-- Feedback section -->
         <HBox
           justifyContent="Center"
+          alignItems="Center"
           class="sapUiSmallMarginTop">
+          <Text text="Was this reasoning helpful?" class="sapUiTinyMarginEnd" />
           <Button
             icon="sap-icon://thumb-up"
-            type="Transparent"
-            tooltip="This looks correct"
+            type="Accept"
+            tooltip="Yes, this looks correct"
             press="onThoughtFeedbackUp" />
           <Button
             icon="sap-icon://thumb-down"
-            type="Transparent"
-            tooltip="This looks incorrect"
+            type="Reject"
+            tooltip="No, this looks incorrect"
             press="onThoughtFeedbackDown"
             class="sapUiTinyMarginBegin" />
         </HBox>
       </VBox>
     </content>
     <buttons>
-      <Button text="Close" press="onCloseThoughtProcess" />
+      <Button text="Close" press="onCloseThoughtProcess" type="Transparent" />
+    </buttons>
+  </Dialog>
+
+  <!-- Checkout Dialog -->
+  <Dialog
+    id="CheckoutDialog"
+    title="Checkout - Tools &amp; Spare Parts"
+    contentWidth="600px"
+    contentHeight="auto">
+    <content>
+      <VBox class="sapUiSmallMargin">
+        <!-- Order Details -->
+        <Panel headerText="Order Details" expandable="false">
+          <VBox class="sapUiSmallMargin">
+            <HBox justifyContent="SpaceBetween" class="sapUiTinyMarginBottom">
+              <Text text="Work Order:" />
+              <Text text="{prep>/workOrderId}" design="Bold" />
+            </HBox>
+            <HBox justifyContent="SpaceBetween" class="sapUiTinyMarginBottom">
+              <Text text="Equipment:" />
+              <Text text="{prep>/equipmentId}" design="Bold" />
+            </HBox>
+          </VBox>
+        </Panel>
+
+        <!-- Selected Tools Summary -->
+        <Panel headerText="Selected Tools ({prep>/selectedToolsCount})" expandable="true" expanded="true" class="sapUiSmallMarginTop">
+          <List
+            items="{prep>/checkoutTools}"
+            noDataText="No tools selected">
+            <StandardListItem
+              title="{prep>name}"
+              description="{prep>category}"
+              icon="sap-icon://wrench"
+              info="{prep>location}"
+              infoState="Information" />
+          </List>
+        </Panel>
+
+        <!-- Selected Parts Summary -->
+        <Panel headerText="Selected Spare Parts ({prep>/selectedPartsCount})" expandable="true" expanded="true" class="sapUiSmallMarginTop">
+          <List
+            items="{prep>/checkoutParts}"
+            noDataText="No parts selected">
+            <StandardListItem
+              title="{prep>name}"
+              description="{prep>partNumber}"
+              icon="sap-icon://product"
+              info="${prep>unitPrice} USD"
+              infoState="Information" />
+          </List>
+        </Panel>
+
+        <!-- Total -->
+        <Panel headerText="Order Total" class="sapUiSmallMarginTop">
+          <VBox class="sapUiSmallMargin">
+            <HBox justifyContent="SpaceBetween" class="sapUiTinyMarginBottom">
+              <Text text="Tools to Pick Up:" />
+              <ObjectNumber number="{prep>/selectedToolsCount}" unit="items" />
+            </HBox>
+            <HBox justifyContent="SpaceBetween" class="sapUiTinyMarginBottom">
+              <Text text="Parts to Order:" />
+              <ObjectNumber number="{prep>/selectedPartsCount}" unit="items" />
+            </HBox>
+            <HBox justifyContent="SpaceBetween" class="sapUiSmallMarginTop">
+              <Text text="Total Parts Cost:" design="Bold" />
+              <ObjectNumber number="{prep>/selectedPartsTotal}" unit="USD" emphasized="true" state="Information" />
+            </HBox>
+          </VBox>
+        </Panel>
+
+        <!-- Notes -->
+        <VBox class="sapUiSmallMarginTop">
+          <Label text="Notes (optional)" />
+          <TextArea
+            id="checkoutNotes"
+            rows="3"
+            width="100%"
+            placeholder="Add any special instructions or notes..." />
+        </VBox>
+      </VBox>
+    </content>
+    <buttons>
+      <Button
+        text="Place Order"
+        type="Emphasized"
+        icon="sap-icon://accept"
+        press="onPlaceOrder" />
+      <Button text="Cancel" press="onCloseCheckout" />
+    </buttons>
+  </Dialog>
+
+  <!-- Order Success Dialog -->
+  <Dialog
+    id="OrderSuccessDialog"
+    title="Order Placed"
+    type="Message"
+    state="Success"
+    contentWidth="400px">
+    <content>
+      <VBox class="sapUiSmallMargin" alignItems="Center">
+        <core:Icon
+          src="sap-icon://accept"
+          size="4rem"
+          color="#107e3e"
+          class="sapUiMediumMarginBottom" />
+        <Title text="Order Placed Successfully!" level="H3" class="sapUiSmallMarginBottom" />
+        <Text text="Your preparation order has been submitted." class="sapUiSmallMarginBottom" />
+        <ObjectStatus
+          text="Order ID: {prep>/lastOrderId}"
+          state="Success"
+          icon="sap-icon://sys-enter-2" />
+      </VBox>
+    </content>
+    <buttons>
+      <Button text="Done" type="Emphasized" press="onCloseOrderSuccess" />
+    </buttons>
+  </Dialog>
+
+  <!-- Add Tool Dialog -->
+  <Dialog
+    id="AddToolDialog"
+    title="Add Tool to List"
+    contentWidth="400px">
+    <content>
+      <VBox class="sapUiSmallMargin">
+        <Label text="Select Tool" required="true" />
+        <Select
+          id="addToolSelect"
+          width="100%"
+          items="{
+            path: 'allTools>/results',
+            sorter: { path: 'name' }
+          }">
+          <core:Item key="{allTools>toolId}" text="{allTools>name} ({allTools>category})" />
+        </Select>
+      </VBox>
+    </content>
+    <buttons>
+      <Button text="Add" type="Emphasized" press="onConfirmAddTool" />
+      <Button text="Cancel" press="onCancelAddTool" />
+    </buttons>
+  </Dialog>
+
+  <!-- Add Part Dialog -->
+  <Dialog
+    id="AddPartDialog"
+    title="Add Spare Part to List"
+    contentWidth="400px">
+    <content>
+      <VBox class="sapUiSmallMargin">
+        <Label text="Select Spare Part" required="true" />
+        <Select
+          id="addPartSelect"
+          width="100%"
+          items="{
+            path: 'allParts>/results',
+            sorter: { path: 'name' }
+          }">
+          <core:Item key="{allParts>partId}" text="{allParts>name} ({allParts>partNumber})" />
+        </Select>
+      </VBox>
+    </content>
+    <buttons>
+      <Button text="Add" type="Emphasized" press="onConfirmAddPart" />
+      <Button text="Cancel" press="onCancelAddPart" />
     </buttons>
   </Dialog>
 
