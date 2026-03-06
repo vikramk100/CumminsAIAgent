@@ -508,32 +508,71 @@ Respond ONLY with a JSON object in this exact format (no markdown, no extra text
 def get_dispatch_brief(order_id: str) -> dict[str, Any]:
     """
     Main entry point for dispatch briefing.
-    Uses the Orchestrator Agent to coordinate sub-agents.
-    
-    Args:
-        order_id: The work order ID
-        
-    Returns:
-        Complete dispatch brief with mission briefing
+    Runs the LangGraph dispatch pipeline:
+      load_work_order → diagnostic → [prescription ‖ vision ‖ load_supporting_data] → synthesize
     """
-    orchestrator = OrchestratorAgent()
-    return orchestrator.dispatch(order_id)
+    from api.agents.graph import get_dispatch_graph
+
+    graph = get_dispatch_graph()
+    final_state = graph.invoke({"order_id": order_id})
+
+    if final_state.get("error"):
+        return {"error": final_state["error"], "orderId": order_id}
+
+    wo = final_state.get("work_order", {})
+    ml = final_state.get("diagnostic_result", {}).get("ml_prediction", {})
+    return {
+        "orderId": order_id,
+        "context_summary": {
+            "equipmentId": final_state.get("equipment_id", ""),
+            "failure_label": ml.get("failure_label"),
+            "confidence": ml.get("confidence"),
+        },
+        "work_order": {
+            "status": wo.get("status"),
+            "priority": wo.get("priority"),
+            "equipmentId": wo.get("equipmentId"),
+            "actualWork": wo.get("actualWork"),
+        },
+        "work_order_detail": final_state.get("work_order_detail", {}),
+        "ml_prediction": ml,
+        "mission_briefing": final_state.get("mission_briefing", {}),
+        "agent_trace": {
+            "graph": "LangGraph",
+            "nodes": [
+                "load_work_order",
+                "diagnostic",
+                "prescription [parallel]",
+                "vision [parallel]",
+                "load_supporting_data [parallel]",
+                "synthesize",
+            ],
+        },
+    }
 
 
 def run_chat(context: dict[str, Any], question: str) -> dict[str, Any]:
     """
-    Handle chat queries using the orchestrator.
-    
-    Args:
-        context: Work order context
-        question: User's question
-        
-    Returns:
-        Chat response
+    Handle chat queries using the LangGraph chat pipeline:
+      gather_context → llm_answer
     """
+    from api.agents.graph import get_chat_graph
+
     order_id = context.get("orderId") or context.get("work_order", {}).get("orderId", "unknown")
-    orchestrator = OrchestratorAgent()
-    return orchestrator.chat(order_id, question, context)
+    work_order = context.get("work_order", {})
+
+    graph = get_chat_graph()
+    final_state = graph.invoke({
+        "order_id": order_id,
+        "question": question,
+        "work_order": work_order,
+    })
+
+    return {
+        "answer": final_state.get("answer", ""),
+        "thought_process": final_state.get("thought_process", ""),
+        "tools_used": final_state.get("tools_used", []),
+    }
 
 
 def suggest_categories_from_description(issue_description: str) -> list[str]:
