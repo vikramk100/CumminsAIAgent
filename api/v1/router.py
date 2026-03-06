@@ -457,13 +457,15 @@ def _generate_prep_for_work_order(db, order_id: str, equipment_id: str, force: b
     )
     
     # Add selection state (for UI)
+    # hasItem = false means technician doesn't have it yet (needs checkout)
+    # availability shows stock status separately
     for tool in tools:
         tool["selected"] = False
-        tool["hasItem"] = tool.get("availability") != "out_of_stock"
+        tool["hasItem"] = False  # Technician doesn't have it yet
     
     for part in parts:
         part["selected"] = False
-        part["hasItem"] = part.get("availability") != "out_of_stock"
+        part["hasItem"] = False  # Technician doesn't have it yet
     
     now = datetime.now(timezone.utc)
     prep_doc = {
