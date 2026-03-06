@@ -18,10 +18,11 @@ cd CumminsAIAgent
 
 # 2. Backend
 python -m venv .venv
-.venv\Scripts\activate
+.venv\Scripts\activate # source .venv/bin/activate for mac
 pip install -r requirements.txt
 cp .env.example .env  # Configure MongoDB and GCP credentials
 uvicorn api.main:app --reload  # http://localhost:8000
+
 
 # 3. Frontend
 npm install
