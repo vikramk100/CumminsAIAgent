@@ -237,6 +237,8 @@ sap.ui.define(
             }
           };
 
+          data.agent_trace = data.agent_trace || { graph: "unknown", nodes: [] };
+
           this._dispatchModel.setData({ ...this._dispatchModel.getData(), ...data }, true);
           
           // Also load preparation recommendations

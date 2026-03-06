@@ -685,10 +685,10 @@
           <core:Icon src="sap-icon://process" size="1.5rem" color="#0854a0" class="sapUiTinyMarginEnd" />
           <Title text="How this insight was generated" level="H5" />
         </HBox>
-        
+
         <!-- Scrollable thought process content -->
         <ScrollContainer
-          height="380px"
+          height="320px"
           width="100%"
           vertical="true"
           horizontal="false"
@@ -697,9 +697,25 @@
             <FormattedText
               htmlText="{path: 'dispatch>/mission_briefing/thought_process', formatter: '.formatter.textToHtml'}"
               width="100%" />
+
+            <!-- Agent execution trace -->
+            <Title text="Agent Execution Trace" level="H5" class="sapUiSmallMarginTop sapUiTinyMarginBottom" />
+            <ObjectStatus
+              text="{dispatch>/agent_trace/graph}"
+              title="Engine"
+              state="Success"
+              class="sapUiTinyMarginBottom" />
+            <List
+              headerText="Nodes executed"
+              items="{dispatch>/agent_trace/nodes}"
+              class="sapUiTinyMarginBottom">
+              <StandardListItem
+                title="{dispatch>}"
+                icon="sap-icon://process" />
+            </List>
           </VBox>
         </ScrollContainer>
-        
+
         <!-- Feedback section -->
         <HBox
           justifyContent="Center"
