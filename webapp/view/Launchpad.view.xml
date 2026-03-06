@@ -3,9 +3,9 @@
   xmlns="sap.m"
   xmlns:f="sap.f"
   controllerName="cummins.dispatcher.controller.Launchpad">
-  <Page title="{i18n>appTitle}" showHeader="true">
+  <Page title="{i18n>appTitle}" showHeader="true" class="sapUiNoContentPadding">
     <content>
-      <VBox alignItems="Start" justifyContent="Start" width="100%" class="sapUiResponsiveMargin">
+      <VBox alignItems="Start" justifyContent="Start" width="100%" class="sapUiSmallMarginBeginEnd sapUiSmallMarginTopBottom">
 
         <!-- Welcome Banner -->
         <VBox class="sapUiSmallMarginBottom" width="100%">
@@ -19,7 +19,7 @@
             id="kpiWorkOrders"
             header="Total Work Orders"
             subheader="Across all statuses"
-            size="S"
+            size="M"
             tileContent=""
             class="sapUiTinyMarginEnd sapUiTinyMarginBottom">
             <tileContent>
@@ -34,7 +34,7 @@
             id="kpiEquipments"
             header="Active Equipment"
             subheader="Registered in fleet"
-            size="S"
+            size="M"
             class="sapUiTinyMarginEnd sapUiTinyMarginBottom">
             <tileContent>
               <TileContent>
@@ -47,7 +47,7 @@
           <GenericTile
             header="AI Model"
             subheader="Vertex AI — Gemini"
-            size="S"
+            size="M"
             class="sapUiTinyMarginEnd sapUiTinyMarginBottom">
             <tileContent>
               <TileContent>
@@ -60,7 +60,7 @@
           <GenericTile
             header="Engine Families"
             subheader="X15 · B6.7 · ISB"
-            size="S"
+            size="M"
             class="sapUiTinyMarginEnd sapUiTinyMarginBottom">
             <tileContent>
               <TileContent>
@@ -76,30 +76,34 @@
         <Title text="My Home" level="H3" class="sapUiTinyMarginBottom sapUiSmallMarginTop" />
 
         <!-- Main Navigation Tiles -->
-        <FlexBox id="LaunchpadTiles" justifyContent="Start" alignItems="Start" wrap="Wrap" class="sapUiSmallMarginTop">
+        <FlexBox id="LaunchpadTiles" justifyContent="Start" alignItems="Start" wrap="Wrap" class="sapUiSmallMarginTop" width="100%">
           <GenericTile
             header="Work Orders and Confirmations"
             subheader="Review work orders and confirmations"
             press="onNavToWorkOrders"
             size="M"
+            frameType="TwoByOne"
             class="sapUiTinyMarginEnd sapUiTinyMarginBottom" />
           <GenericTile
             header="Equipments"
             subheader="Equipment overview and criticality"
             press="onNavToEquipments"
             size="M"
+            frameType="TwoByOne"
             class="sapUiTinyMarginEnd sapUiTinyMarginBottom" />
           <GenericTile
             header="Notifications"
             subheader="System alerts and updates"
             press="onNavToNotifications"
             size="M"
+            frameType="TwoByOne"
             class="sapUiTinyMarginEnd sapUiTinyMarginBottom" />
           <GenericTile
             header="Settings"
             subheader="Configure API and preferences"
             press="onNavToSettings"
             size="M"
+            frameType="TwoByOne"
             class="sapUiTinyMarginEnd sapUiTinyMarginBottom" />
         </FlexBox>
 

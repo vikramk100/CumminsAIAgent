@@ -380,45 +380,51 @@ class OrchestratorAgent:
         full_context = {**context, **additional_context}
         
         # Use LLM for chat with rich context
-        prompt = f"""You are an AI assistant for a maintenance technician. You have access to comprehensive work order and equipment data.
+        prompt = f"""You are an AI assistant helping a maintenance technician answer questions about work orders and equipment.
 
-CURRENT WORK ORDER: {order_id}
-Equipment ID: {equipment_id}
+WORK ORDER: {order_id}
+EQUIPMENT: {equipment_id}
 
-FULL CONTEXT (including historical data):
+DATA AVAILABLE:
 {json.dumps(full_context, indent=2, default=str)[:15000]}
 
-TOOLS USED TO GATHER THIS DATA: {', '.join(tools_used)}
+QUESTION: {question}
 
-TECHNICIAN'S QUESTION: {question}
+Answer the question thoroughly using the data above. Be specific — include numbers, work order IDs, dates, and status details from the data. If the data doesn't contain an answer, say so clearly.
 
-INSTRUCTIONS:
-- Answer the question thoroughly using ALL the context provided above
-- If asked about historical occurrences, count from the equipment_history or issue_statistics
-- If the data shows the answer, provide specific numbers and details
-- Reference specific work order IDs when discussing history
-- Be factual and cite the data
-
-Return JSON with: {{"answer": "your detailed answer here", "thought_process": "explain what data you used to answer"}}"""
+Respond ONLY with a JSON object in this exact format (no markdown, no extra text):
+{{"answer": "your detailed answer here", "thought_process": "brief note on what data you used"}}"""
         
+        raw_text = None
         try:
             response = self.llm.invoke(prompt)
-            text = response.content.strip()
-            
-            if "```json" in text:
-                text = text.split("```json")[1].split("```")[0]
-            elif "```" in text:
-                text = text.split("```")[1].split("```")[0]
-            
-            result = json.loads(text)
-            result["tools_used"] = tools_used
-            return result
+            raw_text = response.content.strip()
         except Exception as e:
-            # Provide a data-driven fallback
+            import logging
+            logging.error(f"[chat] LLM call failed: {e}")
             fallback_answer = self._build_fallback_answer(question, full_context, tools_used)
             return {
                 "answer": fallback_answer,
-                "thought_process": f"Fallback response using gathered data. Tools used: {', '.join(tools_used)}. Error: {str(e)}",
+                "thought_process": f"LLM call failed. Tools used: {', '.join(tools_used)}. Error: {str(e)}",
+                "tools_used": tools_used,
+            }
+
+        # Try to extract JSON from the response
+        text = raw_text
+        if "```json" in text:
+            text = text.split("```json")[1].split("```")[0].strip()
+        elif "```" in text:
+            text = text.split("```")[1].split("```")[0].strip()
+
+        try:
+            result = json.loads(text)
+            result["tools_used"] = tools_used
+            return result
+        except Exception:
+            # Model responded with plain text instead of JSON — use it directly
+            return {
+                "answer": raw_text,
+                "thought_process": f"Tools used: {', '.join(tools_used)}",
                 "tools_used": tools_used,
             }
     
