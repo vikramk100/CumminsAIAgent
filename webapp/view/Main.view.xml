@@ -457,39 +457,58 @@
   <!-- AI Chat dialog -->
   <Dialog
     id="AiChatDialog"
-    title="Talk to AI"
-    contentWidth="480px"
-    contentHeight="360px"
+    title="Talk to AI Assistant"
+    contentWidth="550px"
+    contentHeight="480px"
     resizable="true"
-    draggable="true">
+    draggable="true"
+    verticalScrolling="false">
     <content>
-      <VBox class="sapUiSmallMargin">
-        <Text
-          text="Ask any question about this work order or its equipment."
-          wrapping="true" />
-        <TextArea
-          id="AiChatInput"
-          rows="3"
-          width="100%"
-          placeholder="Type your question here..." />
-        <Button
-          text="Ask"
-          type="Emphasized"
-          icon="sap-icon://sys-enter-2"
-          press="onSendAiQuestion"
-          class="sapUiSmallMarginTop" />
+      <VBox height="100%" class="sapUiSmallMargin">
+        <!-- Header info -->
+        <HBox alignItems="Center" class="sapUiTinyMarginBottom">
+          <core:Icon src="sap-icon://da-2" size="1.5rem" color="#0854a0" class="sapUiTinyMarginEnd" />
+          <Text text="Ask any question about this work order, equipment, or repair procedures." wrapping="true" />
+        </HBox>
+        
+        <!-- Question input -->
+        <VBox class="sapUiTinyMarginTop">
+          <Label text="Your Question" design="Bold" />
+          <TextArea
+            id="AiChatInput"
+            rows="3"
+            width="100%"
+            placeholder="e.g., What are the common causes of this fault code?" />
+          <Button
+            text="Ask AI"
+            type="Emphasized"
+            icon="sap-icon://initiative"
+            press="onSendAiQuestion"
+            class="sapUiSmallMarginTop" />
+        </VBox>
+        
+        <!-- Answer section with scroll -->
         <Panel
-          headerText="AI answer"
+          headerText="AI Response"
           expandable="false"
-          class="sapUiSmallMarginTop">
-          <Text
-            text="{dispatch>/ui/chatLastAnswer}"
-            wrapping="true" />
+          class="sapUiSmallMarginTop"
+          height="220px">
+          <ScrollContainer
+            height="100%"
+            width="100%"
+            vertical="true"
+            horizontal="false">
+            <VBox class="sapUiTinyMargin">
+              <FormattedText
+                htmlText="{path: 'dispatch>/ui/chatLastAnswer', formatter: '.formatter.textToHtml'}"
+                width="100%" />
+            </VBox>
+          </ScrollContainer>
         </Panel>
       </VBox>
     </content>
     <buttons>
-      <Button text="Close" press="onCloseAiChat" />
+      <Button text="Close" press="onCloseAiChat" type="Transparent" />
     </buttons>
   </Dialog>
 
@@ -553,34 +572,56 @@
   <!-- Thought process dialog -->
   <Dialog
     id="ThoughtProcessDialog"
-    title="How this insight was generated"
-    contentWidth="520px"
+    title="AI Reasoning Process"
+    contentWidth="650px"
+    contentHeight="500px"
     resizable="true"
-    draggable="true">
+    draggable="true"
+    verticalScrolling="false">
     <content>
-      <VBox class="sapUiSmallMargin">
-        <Text
-          text="{dispatch>/mission_briefing/thought_process}"
-          wrapping="true" />
+      <VBox height="100%" class="sapUiSmallMargin">
+        <!-- Header -->
+        <HBox alignItems="Center" class="sapUiTinyMarginBottom">
+          <core:Icon src="sap-icon://process" size="1.5rem" color="#0854a0" class="sapUiTinyMarginEnd" />
+          <Title text="How this insight was generated" level="H5" />
+        </HBox>
+        
+        <!-- Scrollable thought process content -->
+        <ScrollContainer
+          height="380px"
+          width="100%"
+          vertical="true"
+          horizontal="false"
+          class="sapUiTinyMarginTop">
+          <VBox class="sapUiSmallMargin">
+            <FormattedText
+              htmlText="{path: 'dispatch>/mission_briefing/thought_process', formatter: '.formatter.textToHtml'}"
+              width="100%" />
+          </VBox>
+        </ScrollContainer>
+        
+        <!-- Feedback section -->
         <HBox
           justifyContent="Center"
+          alignItems="Center"
           class="sapUiSmallMarginTop">
+          <Text text="Was this reasoning helpful?" class="sapUiTinyMarginEnd" />
           <Button
             icon="sap-icon://thumb-up"
-            type="Transparent"
-            tooltip="This looks correct"
+            type="Accept"
+            tooltip="Yes, this looks correct"
             press="onThoughtFeedbackUp" />
           <Button
             icon="sap-icon://thumb-down"
-            type="Transparent"
-            tooltip="This looks incorrect"
+            type="Reject"
+            tooltip="No, this looks incorrect"
             press="onThoughtFeedbackDown"
             class="sapUiTinyMarginBegin" />
         </HBox>
       </VBox>
     </content>
     <buttons>
-      <Button text="Close" press="onCloseThoughtProcess" />
+      <Button text="Close" press="onCloseThoughtProcess" type="Transparent" />
     </buttons>
   </Dialog>
 
