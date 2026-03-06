@@ -7,7 +7,9 @@ Updated to use Multi-Agent Architecture with MCP Server integration.
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+import base64
+
+from fastapi import APIRouter, File, HTTPException, UploadFile
 from pydantic import BaseModel
 
 # Import from new multi-agent system
@@ -372,6 +374,73 @@ def suggest_categories(body: SuggestCategoriesBody):
     """
     suggestions = suggest_categories_from_description(body.issueDescription or "")
     return {"suggestions": suggestions}
+
+
+# ---------- Visual Inspection (Image Agent) ----------
+
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+MAX_IMAGES = 5
+
+
+@router.post("/workorders/{orderId}/analyze-images")
+async def analyze_images(orderId: str, files: list[UploadFile] = File(...)):
+    """
+    Accept up to 5 images for a work order and run VisionAgent CV analysis.
+
+    The VisionAgent sends each image to Gemini 2.0 Flash (multimodal) via Vertex AI.
+    Results are stored in MongoDB via the MCP store_image_analysis tool so the
+    Orchestrator can incorporate visual findings into the Mission Briefing.
+    """
+    db = _get_db()
+    wo = db["workorders"].find_one({"orderId": orderId})
+    if not wo:
+        raise HTTPException(status_code=404, detail=f"Work order {orderId} not found")
+
+    if len(files) > MAX_IMAGES:
+        raise HTTPException(status_code=400, detail=f"Maximum {MAX_IMAGES} images allowed per request")
+
+    # Read and encode each uploaded file
+    images_b64: list[str] = []
+    mime_types: list[str] = []
+    for f in files:
+        content_type = f.content_type or "image/jpeg"
+        if content_type not in ALLOWED_IMAGE_TYPES:
+            raise HTTPException(status_code=400, detail=f"File '{f.filename}' has unsupported type '{content_type}'. Allowed: jpeg, png, webp, gif")
+        raw = await f.read()
+        images_b64.append(base64.b64encode(raw).decode("utf-8"))
+        mime_types.append(content_type)
+
+    # Run VisionAgent
+    from api.agents.vision_agent import VisionAgent
+    from api.mcp_server import store_image_analysis
+
+    agent = VisionAgent()
+    work_order_context = {
+        "equipmentId": wo.get("equipmentId", ""),
+        "issueDescription": wo.get("issueDescription", ""),
+    }
+    analysis = agent.analyze_images(images_b64, mime_types, work_order_context)
+
+    # Store via MCP tool (single source of truth for all DB writes)
+    analysis["file_count"] = len(files)
+    store_image_analysis(orderId, analysis)
+
+    return {
+        "orderId": orderId,
+        "analysis": analysis,
+        "agent": "VisionAgent",
+        "model": "gemini-2.0-flash-001 (multimodal)",
+    }
+
+
+@router.get("/workorders/{orderId}/image-analyses")
+def get_image_analyses(orderId: str):
+    """Return all stored image analyses for a work order."""
+    from api.mcp_server import get_image_analyses as _get_analyses
+    db = _get_db()
+    if not db["workorders"].find_one({"orderId": orderId}):
+        raise HTTPException(status_code=404, detail=f"Work order {orderId} not found")
+    return {"results": _get_analyses(orderId)}
 
 
 INSIGHT_FEEDBACK_COLLECTION = "insight_feedback"

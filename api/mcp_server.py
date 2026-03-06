@@ -540,6 +540,53 @@ def get_equipment_maintenance_history(equipment_id: str) -> dict[str, Any]:
     }
 
 
+IMAGE_ANALYSES_COLLECTION = "image_analyses"
+
+
+@mcp.tool()
+def store_image_analysis(order_id: str, analysis: dict[str, Any]) -> dict[str, Any]:
+    """
+    Store a VisionAgent image analysis result for a work order.
+
+    Args:
+        order_id: The work order ID
+        analysis: Structured analysis dict from VisionAgent
+
+    Returns:
+        Confirmation with stored document ID
+    """
+    from datetime import datetime, timezone
+
+    db = _get_db()
+    doc = {
+        "orderId": order_id,
+        "analyzedAt": datetime.now(timezone.utc),
+        **analysis,
+    }
+    result = db[IMAGE_ANALYSES_COLLECTION].insert_one(doc)
+    return {"ok": True, "orderId": order_id, "id": str(result.inserted_id)}
+
+
+@mcp.tool()
+def get_image_analyses(order_id: str) -> list[dict[str, Any]]:
+    """
+    Retrieve all stored image analyses for a work order.
+
+    Args:
+        order_id: The work order ID
+
+    Returns:
+        List of image analysis records (most recent first)
+    """
+    db = _get_db()
+    records = list(
+        db[IMAGE_ANALYSES_COLLECTION]
+        .find({"orderId": order_id}, {"_id": 0})
+        .sort("analyzedAt", -1)
+    )
+    return records
+
+
 @mcp.tool()
 def count_similar_issues(issue_keywords: str) -> dict[str, Any]:
     """

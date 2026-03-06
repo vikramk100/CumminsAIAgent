@@ -245,6 +245,106 @@
         </uxap:subSections>
       </uxap:ObjectPageSection>
 
+      <uxap:ObjectPageSection title="Visual Inspection">
+        <uxap:subSections>
+          <uxap:ObjectPageSubSection>
+            <VBox class="sapUiSmallMargin">
+              <HBox justifyContent="SpaceBetween" alignItems="Center" class="sapUiSmallMarginBottom">
+                <Title text="Image-Based CV Analysis" level="H4" />
+                <Button
+                  text="Upload &amp; Analyze Images"
+                  type="Emphasized"
+                  icon="sap-icon://camera"
+                  press="onUploadAnalyzeImages" />
+              </HBox>
+
+              <!-- Upload status -->
+              <Panel
+                visible="{= ${dispatch>/ui/visionAnalyzing} === true}"
+                headerText="Analyzing images..."
+                expandable="false"
+                class="sapUiSmallMarginBottom">
+                <HBox alignItems="Center" class="sapUiTinyMargin">
+                  <core:Icon src="sap-icon://process" class="sapUiTinyMarginEnd" />
+                  <Text text="VisionAgent is processing your images with llava (local CV model). Please wait..." wrapping="true" />
+                </HBox>
+              </Panel>
+
+              <!-- Latest analysis result -->
+              <Panel
+                visible="{= !!${dispatch>/ui/latestVisionAnalysis/damage_assessment}}"
+                headerText="Latest Visual Inspection Report"
+                expandable="true"
+                expanded="true"
+                class="sapUiSmallMarginBottom">
+                <VBox class="sapUiSmallMargin">
+                  <HBox alignItems="Center" class="sapUiTinyMarginBottom">
+                    <Text text="Severity: " class="sapUiTinyMarginEnd" />
+                    <ObjectStatus
+                      text="{dispatch>/ui/latestVisionAnalysis/severity}"
+                      state="{dispatch>/ui/latestVisionAnalysis/severityState}" />
+                    <Text text=" | Confidence: " class="sapUiSmallMarginBegin sapUiTinyMarginEnd" />
+                    <Text text="{dispatch>/ui/latestVisionAnalysis/confidenceDisplay}" />
+                  </HBox>
+
+                  <Label text="Damage Assessment" design="Bold" class="sapUiTinyMarginTop" />
+                  <Text
+                    text="{dispatch>/ui/latestVisionAnalysis/damage_assessment}"
+                    wrapping="true"
+                    class="sapUiTinyMarginBottom" />
+
+                  <Label text="Components Identified" design="Bold" class="sapUiTinyMarginTop" />
+                  <Text
+                    text="{dispatch>/ui/latestVisionAnalysis/componentsText}"
+                    wrapping="true"
+                    class="sapUiTinyMarginBottom" />
+
+                  <Label text="Defects Found" design="Bold" class="sapUiTinyMarginTop" />
+                  <Text
+                    text="{dispatch>/ui/latestVisionAnalysis/defectsText}"
+                    wrapping="true"
+                    class="sapUiTinyMarginBottom" />
+
+                  <Label text="Recommended Actions" design="Bold" class="sapUiTinyMarginTop" />
+                  <List
+                    items="{dispatch>/ui/latestVisionAnalysis/recommended_actions}"
+                    showNoData="false">
+                    <StandardListItem title="{dispatch>}" />
+                  </List>
+                </VBox>
+              </Panel>
+
+              <!-- Previous analyses list -->
+              <Panel
+                visible="{= ${dispatch>/ui/visionAnalysesCount} > 1}"
+                headerText="All Image Analysis Records"
+                expandable="true"
+                expanded="false">
+                <List items="{dispatch>/image_analyses}" showNoData="false">
+                  <CustomListItem>
+                    <VBox class="sapUiTinyMargin">
+                      <HBox justifyContent="SpaceBetween">
+                        <ObjectStatus
+                          text="{dispatch>severity}"
+                          state="{= ${dispatch>severity} === 'Critical' ? 'Error' : (${dispatch>severity} === 'High' ? 'Error' : (${dispatch>severity} === 'Medium' ? 'Warning' : 'Success'))}" />
+                        <Text text="{dispatch>analyzedAt}" />
+                      </HBox>
+                      <Text text="{dispatch>damage_assessment}" wrapping="true" class="sapUiTinyMarginTop" />
+                    </VBox>
+                  </CustomListItem>
+                </List>
+              </Panel>
+
+              <Text
+                visible="{= ${dispatch>/ui/visionAnalysesCount} === 0 &amp;&amp; !${dispatch>/ui/visionAnalyzing}}"
+                text="No image analyses yet. Upload images to run AI visual inspection."
+                wrapping="true"
+                class="sapThemeNeutralColor" />
+            </VBox>
+          </uxap:ObjectPageSubSection>
+        </uxap:subSections>
+      </uxap:ObjectPageSection>
+
       <uxap:ObjectPageSection title="Timeline">
         <uxap:subSections>
           <uxap:ObjectPageSubSection>

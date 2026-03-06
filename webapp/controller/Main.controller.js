@@ -182,6 +182,15 @@ sap.ui.define(
           const snippet = data?.mission_briefing?.manual_reference_snippet || "";
           const manualSnippetHtml = formatter.snippetToHtml(snippet);
 
+          // Build vision analysis UI state
+          const imageAnalyses = data.image_analyses || [];
+          const latestVision = imageAnalyses.length > 0 ? imageAnalyses[0] : {};
+          const visionSeverity = latestVision.severity || "";
+          const visionSeverityState =
+            visionSeverity === "Critical" || visionSeverity === "High" ? "Error" :
+            visionSeverity === "Medium" ? "Warning" :
+            visionSeverity === "Low" ? "Success" : "None";
+
           data.ui = {
             criticality: crit,
             criticalityText: critText,
@@ -191,7 +200,19 @@ sap.ui.define(
             tools: tools,
             manualSnippetHtml: manualSnippetHtml,
             chatLastAnswer: "",
-            thoughtFeedback: null
+            thoughtFeedback: null,
+            visionAnalyzing: false,
+            visionAnalysesCount: imageAnalyses.length,
+            latestVisionAnalysis: {
+              damage_assessment: latestVision.damage_assessment || "",
+              severity: visionSeverity,
+              severityState: visionSeverityState,
+              confidence: latestVision.confidence || 0,
+              confidenceDisplay: latestVision.confidence ? Math.round(latestVision.confidence * 100) + "%" : "",
+              componentsText: (latestVision.components_identified || []).join(", ") || "—",
+              defectsText: (latestVision.defects_found || []).join(", ") || "None detected",
+              recommended_actions: latestVision.recommended_actions || [],
+            }
           };
 
           this._dispatchModel.setData({ ...this._dispatchModel.getData(), ...data }, true);
@@ -418,6 +439,93 @@ sap.ui.define(
           // eslint-disable-next-line no-console
           console.error(e);
           MessageToast.show("Failed to delete confirmation.");
+        }
+      },
+
+      // -----------------------------------------------------------------------
+      // Visual Inspection (VisionAgent)
+      // -----------------------------------------------------------------------
+
+      onUploadAnalyzeImages: function () {
+        // Programmatically create a hidden file input so we don't need sap.ui.unified
+        var self = this;
+        var input = document.createElement("input");
+        input.type = "file";
+        input.accept = "image/jpeg,image/png,image/webp";
+        input.multiple = true;
+        input.style.display = "none";
+        document.body.appendChild(input);
+
+        input.addEventListener("change", function () {
+          var files = Array.from(input.files || []);
+          document.body.removeChild(input);
+          if (!files.length) return;
+          if (files.length > 5) {
+            MessageToast.show("Maximum 5 images allowed per analysis.");
+            return;
+          }
+          self._runVisionAnalysis(files);
+        });
+
+        input.click();
+      },
+
+      _runVisionAnalysis: async function (files) {
+        var base = this._getApiBase();
+        var orderId = this._dispatchModel.getProperty("/orderId");
+
+        this._dispatchModel.setProperty("/ui/visionAnalyzing", true);
+        MessageToast.show("Uploading " + files.length + " image(s) to VisionAgent...");
+
+        try {
+          var formData = new FormData();
+          files.forEach(function (f) {
+            formData.append("files", f, f.name);
+          });
+
+          var res = await fetch(
+            base + "/api/v1/workorders/" + encodeURIComponent(orderId) + "/analyze-images",
+            { method: "POST", body: formData }
+          );
+
+          if (!res.ok) {
+            var errText = await res.text();
+            throw new Error("API error " + res.status + ": " + errText);
+          }
+
+          var data = await res.json();
+          var analysis = data.analysis || {};
+          var severity = analysis.severity || "Low";
+          var severityState =
+            severity === "Critical" || severity === "High" ? "Error" :
+            severity === "Medium" ? "Warning" :
+            severity === "Low" ? "Success" : "None";
+
+          // Update the UI model with the new analysis
+          this._dispatchModel.setProperty("/ui/latestVisionAnalysis", {
+            damage_assessment: analysis.damage_assessment || "",
+            severity: severity,
+            severityState: severityState,
+            confidence: analysis.confidence || 0,
+            confidenceDisplay: analysis.confidence ? Math.round(analysis.confidence * 100) + "%" : "",
+            componentsText: (analysis.components_identified || []).join(", ") || "—",
+            defectsText: (analysis.defects_found || []).join(", ") || "None detected",
+            recommended_actions: analysis.recommended_actions || [],
+          });
+
+          // Prepend to image_analyses list in model
+          var existing = this._dispatchModel.getProperty("/image_analyses") || [];
+          existing.unshift({ ...analysis, analyzedAt: new Date().toISOString() });
+          this._dispatchModel.setProperty("/image_analyses", existing);
+          this._dispatchModel.setProperty("/ui/visionAnalysesCount", existing.length);
+
+          MessageToast.show("Visual inspection complete. Severity: " + severity);
+        } catch (e) {
+          // eslint-disable-next-line no-console
+          console.error("VisionAgent error:", e);
+          MessageToast.show("Image analysis failed: " + (e.message || "Unknown error"));
+        } finally {
+          this._dispatchModel.setProperty("/ui/visionAnalyzing", false);
         }
       },
 
