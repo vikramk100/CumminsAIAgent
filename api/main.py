@@ -10,6 +10,8 @@ from typing import Any, Optional
 import pymongo
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 try:
@@ -56,6 +58,9 @@ app = FastAPI(title="Cummins SAP-Style Predictions API")
 app.add_middleware(CORSMiddleware, allow_origins=CORS_ORIGINS, allow_methods=["*"], allow_headers=["*"], allow_credentials=True)
 app.include_router(v1_router)
 
+# Webapp path for serving frontend
+_webapp_path = Path(__file__).resolve().parent.parent / "webapp"
+
 
 # Health check endpoint for Cloud Run
 @app.get("/health")
@@ -66,7 +71,13 @@ async def health_check():
 
 @app.get("/")
 async def root():
-    """Root endpoint with API info."""
+    """Serve the frontend index.html or API info."""
+    # Check if webapp folder exists (production deployment)
+    webapp_path = Path(__file__).resolve().parent.parent / "webapp"
+    index_file = webapp_path / "index.html"
+    if index_file.exists():
+        return FileResponse(index_file)
+    # Fallback to API info if no frontend
     return {
         "service": "Cummins AI Agent API",
         "version": "1.0.0",
@@ -241,3 +252,9 @@ def trigger_work_order(body: TriggerWorkOrderBody):
     }
     db[WORK_ORDERS_COLLECTION].insert_one(wo)
     return {"d": {"orderId": order_id, "message": "Work order created."}}
+
+
+# Mount static files for the frontend (webapp folder) - MUST be at end after all API routes
+# This serves UI5 frontend at root level
+if _webapp_path.exists():
+    app.mount("/", StaticFiles(directory=str(_webapp_path), html=True), name="webapp")

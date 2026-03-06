@@ -21,6 +21,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY api/ ./api/
 COPY scripts/ ./scripts/
 COPY schemas/ ./schemas/
+COPY webapp/ ./webapp/
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1

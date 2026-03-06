@@ -2,8 +2,17 @@ sap.ui.define(["sap/ui/core/mvc/Controller", "sap/m/MessageToast"], function (Co
   "use strict";
 
   return Controller.extend("cummins.dispatcher.controller.Settings", {
+    _getDefaultApiBase: function () {
+      // Use relative URLs in production, localhost:8000 for local dev
+      var host = window.location.hostname;
+      if (host === "localhost" || host === "127.0.0.1") {
+        return "http://localhost:8000";
+      }
+      return window.location.origin; // Show full origin for clarity in settings
+    },
+
     onInit: function () {
-      var saved = localStorage.getItem("apiBase") || "http://localhost:8000";
+      var saved = localStorage.getItem("apiBase") || this._getDefaultApiBase();
       this.getView().byId("apiBaseInput").setValue(saved);
     },
 
@@ -22,7 +31,7 @@ sap.ui.define(["sap/ui/core/mvc/Controller", "sap/m/MessageToast"], function (Co
     },
 
     onTestConnection: function () {
-      var val = this.getView().byId("apiBaseInput").getValue().trim() || "http://localhost:8000";
+      var val = this.getView().byId("apiBaseInput").getValue().trim() || this._getDefaultApiBase();
       var oStatus = this.getView().byId("connectionStatus");
       oStatus.setText("Testing…");
       fetch(val + "/health")

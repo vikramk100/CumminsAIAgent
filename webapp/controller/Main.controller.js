@@ -93,7 +93,12 @@ sap.ui.define(
         if (fromQuery) return fromQuery.replace(/\/+$/, "");
         const fromStorage = window.localStorage.getItem("API_BASE");
         if (fromStorage) return fromStorage.replace(/\/+$/, "");
-        return "http://localhost:8000";
+        // Use relative URLs in production, localhost:8000 for local dev
+        const host = window.location.hostname;
+        if (host === "localhost" || host === "127.0.0.1") {
+          return "http://localhost:8000";
+        }
+        return ""; // Relative URLs for production (same origin)
       },
 
       _loadDispatchBrief: async function () {

@@ -2,6 +2,17 @@ sap.ui.define(["sap/ui/core/mvc/Controller", "sap/m/MessageToast", "sap/m/Messag
   "use strict";
 
   return Controller.extend("cummins.dispatcher.controller.SupportCenter", {
+    _getApiBase: function () {
+      var fromStorage = localStorage.getItem("apiBase");
+      if (fromStorage) return fromStorage.replace(/\/+$/, "");
+      // Use relative URLs in production, localhost:8000 for local dev
+      var host = window.location.hostname;
+      if (host === "localhost" || host === "127.0.0.1") {
+        return "http://localhost:8000";
+      }
+      return ""; // Relative URLs for production (same origin)
+    },
+
     onNavBack: function () {
       this.getOwnerComponent().getRouter().navTo("launchpad");
     },
@@ -30,7 +41,7 @@ sap.ui.define(["sap/ui/core/mvc/Controller", "sap/m/MessageToast", "sap/m/Messag
     },
 
     onRefreshStatus: function () {
-      var sBase = localStorage.getItem("apiBase") || "http://localhost:8000";
+      var sBase = this._getApiBase();
       var oLabel = this.getView().byId("statusLastChecked");
       oLabel.setText("Checking…");
 

@@ -2,8 +2,19 @@ sap.ui.define(["sap/ui/core/mvc/Controller"], function (Controller) {
   "use strict";
 
   return Controller.extend("cummins.dispatcher.controller.Launchpad", {
+    _getApiBase: function () {
+      var fromStorage = localStorage.getItem("apiBase");
+      if (fromStorage) return fromStorage.replace(/\/+$/, "");
+      // Use relative URLs in production, localhost:8000 for local dev
+      var host = window.location.hostname;
+      if (host === "localhost" || host === "127.0.0.1") {
+        return "http://localhost:8000";
+      }
+      return ""; // Relative URLs for production (same origin)
+    },
+
     onInit: function () {
-      var sBase = localStorage.getItem("apiBase") || "http://localhost:8000";
+      var sBase = this._getApiBase();
       var oView = this.getView();
 
       fetch(sBase + "/api/v1/workorders?limit=5000")

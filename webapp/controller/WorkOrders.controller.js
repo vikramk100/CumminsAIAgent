@@ -42,7 +42,12 @@ sap.ui.define(
         if (fromStorage) {
           return fromStorage.replace(/\/+$/, "");
         }
-        return "http://localhost:8000";
+        // Use relative URLs in production, localhost:8000 for local dev
+        var host = window.location.hostname;
+        if (host === "localhost" || host === "127.0.0.1") {
+          return "http://localhost:8000";
+        }
+        return ""; // Relative URLs for production (same origin)
       },
 
       _loadWorkOrders: async function () {
