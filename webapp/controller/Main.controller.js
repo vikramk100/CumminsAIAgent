@@ -501,20 +501,12 @@ sap.ui.define(
           
           const data = await res.json();
           
-          // Add selection state to tools and parts
-          const tools = (data.recommended_tools || []).map(t => ({
-            ...t,
-            selected: false,
-            hasItem: false
-          }));
-          const parts = (data.recommended_parts || []).map(p => ({
-            ...p,
-            selected: false,
-            hasItem: false
-          }));
+          // Use the data as-is (already has selected/hasItem from API)
+          const tools = data.recommendedTools || [];
+          const parts = data.recommendedParts || [];
           
           this._prepModel.setProperty("/workOrderId", orderId);
-          this._prepModel.setProperty("/equipmentId", data.work_order?.equipmentId || "");
+          this._prepModel.setProperty("/equipmentId", data.equipmentId || "");
           this._prepModel.setProperty("/recommendedTools", tools);
           this._prepModel.setProperty("/recommendedParts", parts);
           this._updateCheckoutSummary();
