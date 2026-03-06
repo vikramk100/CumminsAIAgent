@@ -10,6 +10,7 @@ from typing import Optional
 import base64
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
 
 # Import from new multi-agent system
@@ -319,7 +320,7 @@ def dispatch_brief(orderId: str):
     result = get_dispatch_brief(orderId)
     if result.get("error"):
         raise HTTPException(status_code=404, detail=result["error"])
-    return result
+    return jsonable_encoder(result)
 
 
 class AuditTrailBody(BaseModel):

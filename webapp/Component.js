@@ -23,6 +23,9 @@ sap.ui.define(["sap/ui/core/UIComponent", "sap/ui/model/json/JSONModel"], functi
           confidenceDisplay: "0%",
           tools: [],
           manualSnippetHtml: "",
+          chatLastAnswer: "",
+          chatLastAnswerHtml: "<p><em>Ask a question about this work order and the AI will respond here.</em></p>",
+          thoughtFeedback: null
         },
       });
       this.setModel(oDispatchModel, "dispatch");

@@ -173,21 +173,63 @@
         <uxap:subSections>
           <uxap:ObjectPageSubSection>
             <VBox class="sapUiSmallMargin">
-              <HBox justifyContent="SpaceBetween" class="sapUiSmallMarginBottom">
-                <Button
-                  text="Talk to AI"
-                  type="Emphasized"
-                  icon="sap-icon://discussion-2"
-                  press="onOpenAiChat" />
-                <Button
-                  text="Show Thought Process"
-                  type="Transparent"
-                  icon="sap-icon://inspect"
-                  press="onShowThoughtProcess" />
+              <!-- Header with actions -->
+              <HBox justifyContent="SpaceBetween" alignItems="Center" class="sapUiSmallMarginBottom">
+                <HBox alignItems="Center">
+                  <core:Icon src="sap-icon://lightbulb" size="1.5rem" color="#0854a0" class="sapUiTinyMarginEnd" />
+                  <Title text="AI-Powered Root Cause Analysis" level="H4" />
+                </HBox>
+                <HBox>
+                  <Button
+                    text="Talk to AI"
+                    type="Emphasized"
+                    icon="sap-icon://discussion-2"
+                    press="onOpenAiChat"
+                    class="sapUiTinyMarginEnd" />
+                  <Button
+                    text="Show Thought Process"
+                    type="Transparent"
+                    icon="sap-icon://inspect"
+                    press="onShowThoughtProcess" />
+                </HBox>
               </HBox>
-              <Text
-                text="{dispatch>/mission_briefing/root_cause_analysis}"
-                wrapping="true" />
+
+              <!-- Main insight panel -->
+              <Panel
+                expandable="false"
+                backgroundDesign="Solid"
+                class="sapUiTinyMarginTop">
+                <content>
+                  <VBox class="sapUiSmallMargin">
+                    <FormattedText
+                      htmlText="{path: 'dispatch>/mission_briefing/root_cause_analysis', formatter: '.formatter.textToHtml'}"
+                      width="100%" />
+                  </VBox>
+                </content>
+              </Panel>
+
+              <!-- Quick stats bar -->
+              <HBox justifyContent="SpaceAround" alignItems="Center" class="sapUiMediumMarginTop">
+                <VBox alignItems="Center">
+                  <ObjectNumber
+                    number="{dispatch>/mission_briefing/estimated_repair_time}"
+                    unit="min"
+                    state="Information" />
+                  <Text text="Est. Repair Time" class="sapUiTinyMarginTop" />
+                </VBox>
+                <VBox alignItems="Center">
+                  <ObjectNumber
+                    number="{parts: [{path: 'dispatch>/mission_briefing/required_tools'}], formatter: '.formatter.arrayLength'}"
+                    state="Information" />
+                  <Text text="Tools Required" class="sapUiTinyMarginTop" />
+                </VBox>
+                <VBox alignItems="Center">
+                  <ObjectStatus
+                    text="{path: 'dispatch>/context_summary/confidence', formatter: '.formatter.confidenceDisplay'}"
+                    state="{path: 'dispatch>/context_summary/confidence', formatter: '.formatter.confidenceState'}" />
+                  <Text text="AI Confidence" class="sapUiTinyMarginTop" />
+                </VBox>
+              </HBox>
             </VBox>
           </uxap:ObjectPageSubSection>
         </uxap:subSections>
@@ -386,11 +428,11 @@
                 <VBox class="sapUiSmallMargin">
                   <HBox justifyContent="SpaceBetween" class="sapUiTinyMarginBottom">
                     <Text text="Selected Tools:" />
-                    <Text text="{prep>/selectedToolsCount}" design="Bold" />
+                    <ObjectNumber number="{prep>/selectedToolsCount}" emphasized="true" />
                   </HBox>
                   <HBox justifyContent="SpaceBetween" class="sapUiTinyMarginBottom">
                     <Text text="Selected Spare Parts:" />
-                    <Text text="{prep>/selectedPartsCount}" design="Bold" />
+                    <ObjectNumber number="{prep>/selectedPartsCount}" emphasized="true" />
                   </HBox>
                   <HBox justifyContent="SpaceBetween" class="sapUiTinyMarginBottom">
                     <Text text="Total Parts Cost:" />
@@ -536,9 +578,9 @@
                 <CustomListItem>
                   <VBox class="sapUiSmallMarginBottom">
                     <HBox justifyContent="SpaceBetween">
-                      <Text
+                      <Title
                         text="{dispatch>title}"
-                        design="Bold" />
+                        level="H6" />
                       <Text text="{dispatch>at}" />
                     </HBox>
                     <Text
@@ -591,19 +633,14 @@
         <Panel
           headerText="AI Response"
           expandable="false"
-          class="sapUiSmallMarginTop"
-          height="220px">
-          <ScrollContainer
-            height="100%"
-            width="100%"
-            vertical="true"
-            horizontal="false">
-            <VBox class="sapUiTinyMargin">
-              <FormattedText
-                htmlText="{path: 'dispatch>/ui/chatLastAnswer', formatter: '.formatter.textToHtml'}"
-                width="100%" />
-            </VBox>
-          </ScrollContainer>
+          expanded="true"
+          class="sapUiSmallMarginTop">
+          <VBox class="sapUiTinyMargin">
+            <FormattedText
+              id="AiChatAnswer"
+              htmlText="{dispatch>/ui/chatLastAnswerHtml}"
+              width="100%" />
+          </VBox>
         </Panel>
       </VBox>
     </content>
@@ -773,12 +810,12 @@
         <Panel headerText="Order Details" expandable="false">
           <VBox class="sapUiSmallMargin">
             <HBox justifyContent="SpaceBetween" class="sapUiTinyMarginBottom">
-              <Text text="Work Order:" />
-              <Text text="{prep>/workOrderId}" design="Bold" />
+              <Label text="Work Order:" />
+              <Title text="{prep>/workOrderId}" level="H6" />
             </HBox>
             <HBox justifyContent="SpaceBetween" class="sapUiTinyMarginBottom">
-              <Text text="Equipment:" />
-              <Text text="{prep>/equipmentId}" design="Bold" />
+              <Label text="Equipment:" />
+              <Title text="{prep>/equipmentId}" level="H6" />
             </HBox>
           </VBox>
         </Panel>
@@ -823,7 +860,7 @@
               <ObjectNumber number="{prep>/selectedPartsCount}" unit="items" />
             </HBox>
             <HBox justifyContent="SpaceBetween" class="sapUiSmallMarginTop">
-              <Text text="Total Parts Cost:" design="Bold" />
+              <Label text="Total Parts Cost:" design="Bold" />
               <ObjectNumber number="{prep>/selectedPartsTotal}" unit="USD" emphasized="true" state="Information" />
             </HBox>
           </VBox>

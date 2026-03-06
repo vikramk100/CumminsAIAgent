@@ -532,40 +532,121 @@ def _synthesize_briefing(
     confidence = ml.get("confidence", 0.0)
     symptom = diagnostic_result.get("symptom", "")
     system_affected = diagnostic_result.get("system_affected", "Engine")
+    telemetry = diagnostic_result.get("telemetry", {})
 
     required_tools = prescription_result.get("required_tools", [])
     manual_snippet = prescription_result.get("manual_reference_snippet", "")
     repair_time = prescription_result.get("estimated_repair_time", 60)
     historical_context = prescription_result.get("historical_context", "")
 
+    # Build detailed root cause analysis
+    issue_desc = work_order.get("issueDescription", "equipment malfunction")
+    equipment_id = work_order.get("equipmentId", "")
+    
     root_cause_parts = []
+    
+    # Opening context
+    root_cause_parts.append(f"**Issue Overview:** Equipment {equipment_id} reported '{issue_desc}'.")
+    
+    # ML prediction findings
     if fault_code and fault_code != "No_Failure":
-        root_cause_parts.append(f"ML prediction indicates {fault_code} ({failure_label})")
-    if confidence:
-        root_cause_parts.append(f"with {confidence * 100:.0f}% confidence")
+        confidence_level = "high" if confidence >= 0.8 else "moderate" if confidence >= 0.6 else "low"
+        root_cause_parts.append(
+            f"\n\n**AI Diagnostic Finding:** Our machine learning model predicts fault code **{fault_code}** "
+            f"(classification: {failure_label}) with **{confidence_level} confidence ({confidence * 100:.0f}%)**."
+        )
+    else:
+        root_cause_parts.append(
+            "\n\n**AI Diagnostic Finding:** No specific failure pattern detected by ML classifier. "
+            "Manual inspection recommended."
+        )
+    
+    # Symptom explanation
     if symptom:
-        root_cause_parts.append(f"- {symptom}")
+        root_cause_parts.append(f"\n\n**Symptom Analysis:** {symptom}")
+    
+    # System affected
     if system_affected:
-        root_cause_parts.append(f"System affected: {system_affected}")
-
-    root_cause = (
-        ". ".join(root_cause_parts)
-        if root_cause_parts
-        else "Inspection required — no specific failure predicted."
-    )
-
-    thought_process = (
-        f"Dispatch graph ran: DiagnosticAgent → [PrescriptionAgent ‖ VisionAgent ‖ SupportingData] → Synthesize. "
-        f"Failure label: {failure_label}, confidence: {confidence:.2f}. "
-        f"PrescriptionAgent searched manuals for '{fault_code}' and historical fixes for '{system_affected}'."
-    )
+        root_cause_parts.append(
+            f"\n\n**Affected System:** The **{system_affected}** system requires attention. "
+            f"Focus diagnostic efforts on {system_affected.lower()}-related components."
+        )
+    
+    # Telemetry insights
+    if telemetry:
+        telemetry_insights = []
+        if telemetry.get("Process_Temperature"):
+            temp = telemetry["Process_Temperature"]
+            status = "⚠️ elevated" if temp > 320 else "normal"
+            telemetry_insights.append(f"Process Temperature: {temp}°K ({status})")
+        if telemetry.get("Torque"):
+            torque = telemetry["Torque"]
+            status = "⚠️ high" if torque > 50 else "normal"
+            telemetry_insights.append(f"Torque: {torque} Nm ({status})")
+        if telemetry.get("Rotational_Speed"):
+            rpm = telemetry["Rotational_Speed"]
+            telemetry_insights.append(f"Rotational Speed: {rpm} RPM")
+        if telemetry.get("Tool_Wear") is not None:
+            wear = telemetry["Tool_Wear"]
+            status = "⚠️ significant wear" if wear and wear > 150 else "acceptable"
+            telemetry_insights.append(f"Tool Wear: {wear or 'N/A'} min ({status})")
+        
+        if telemetry_insights:
+            root_cause_parts.append("\n\n**Recent Telemetry Readings:**\n• " + "\n• ".join(telemetry_insights))
+    
+    # Historical context
     if historical_context:
-        thought_process += f" Historical context: {historical_context[:150]}..."
+        root_cause_parts.append(
+            f"\n\n**Historical Patterns:** Similar issues on this equipment have been resolved through: {historical_context[:200]}..."
+        )
+    
+    # Recommendation
+    if required_tools:
+        top_tools = required_tools[:4]
+        root_cause_parts.append(
+            f"\n\n**Recommended Approach:** Begin with visual inspection of the {system_affected.lower()} system. "
+            f"Key tools needed: {', '.join(top_tools)}. Estimated repair time: ~{repair_time} minutes."
+        )
+
+    root_cause = "".join(root_cause_parts)
+
+    # Build detailed thought process showing agent workflow
+    thought_process_parts = [
+        "**🔄 Agent Workflow Executed:**",
+        "",
+        "**Step 1 - Data Retrieval:**",
+        f"• Loaded work order {work_order.get('orderId', 'N/A')} from MongoDB",
+        f"• Retrieved equipment telemetry for {equipment_id}",
+        "",
+        "**Step 2 - Diagnostic Analysis (DiagnosticAgent):**",
+        f"• Ran ML failure classifier on telemetry data",
+        f"• Prediction: {failure_label} (confidence: {confidence:.0%})",
+        f"• Mapped fault code {fault_code} to system: {system_affected}",
+        "",
+        "**Step 3 - Prescription & Research (PrescriptionAgent):**",
+        f"• Searched Cummins repair manuals for '{fault_code}' procedures",
+        f"• Queried historical fixes for {system_affected} issues",
+        f"• Compiled tool checklist: {len(required_tools)} items",
+        f"• Estimated repair duration: {repair_time} minutes",
+        "",
+        "**Step 4 - Visual Analysis (VisionAgent):**",
+        "• Checked for uploaded inspection images",
+        "• Ready to analyze equipment photos via Ollama llava model",
+        "",
+        "**Step 5 - Synthesis:**",
+        "• Combined all agent outputs into Mission Briefing",
+        "• Generated root cause analysis and recommendations",
+    ]
+    
+    if historical_context:
+        thought_process_parts.append(f"\n**📊 Historical Data Used:** {historical_context[:100]}...")
+
+    thought_process = "\n".join(thought_process_parts)
 
     return {
         "root_cause_analysis": root_cause,
         "required_tools": required_tools,
         "estimated_repair_time": repair_time,
-        "manual_reference_snippet": manual_snippet or "See engine service manual for detailed procedures.",
+        "manual_reference_snippet": manual_snippet or "Refer to the official Cummins engine service manual for detailed step-by-step repair procedures.",
         "thought_process": thought_process,
     }

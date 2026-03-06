@@ -222,6 +222,7 @@ sap.ui.define(
             tools: tools,
             manualSnippetHtml: manualSnippetHtml,
             chatLastAnswer: "",
+            chatLastAnswerHtml: "<p><em>Ask a question about this work order and the AI will respond here.</em></p>",
             thoughtFeedback: null,
             visionAnalyzing: false,
             visionAnalysesCount: imageAnalyses.length,
@@ -255,6 +256,8 @@ sap.ui.define(
       onOpenAiChat: function () {
         const oDialog = this.byId("AiChatDialog");
         if (oDialog) {
+          // Ensure dialog has access to the dispatch model
+          oDialog.setModel(this._dispatchModel, "dispatch");
           oDialog.open();
         }
       },
@@ -280,7 +283,11 @@ sap.ui.define(
           return;
         }
 
+        // Show "Thinking..." immediately
+        const thinkingHtml = "<p><em>Thinking...</em></p>";
         this._dispatchModel.setProperty("/ui/chatLastAnswer", "Thinking...");
+        this._dispatchModel.setProperty("/ui/chatLastAnswerHtml", thinkingHtml);
+        console.log("Chat starting for order:", orderId);
 
         try {
           const res = await fetch(`${base}/api/v1/chat`, {
@@ -300,17 +307,33 @@ sap.ui.define(
             throw new Error(`API error ${res.status}: ${t}`);
           }
           const data = await res.json();
-          this._dispatchModel.setProperty(
-            "/ui/chatLastAnswer",
-            data.answer || "No answer was returned."
-          );
+          console.log("Chat response:", data);
+          const answerText = data.answer || "No answer was returned.";
+          const htmlContent = formatter.textToHtml(answerText);
+          
+          // Update model with both raw text and HTML
+          this._dispatchModel.setProperty("/ui/chatLastAnswer", answerText);
+          this._dispatchModel.setProperty("/ui/chatLastAnswerHtml", htmlContent);
+          console.log("Chat answer HTML set, length:", htmlContent.length);
+          
+          // Debug: verify the model value was set
+          const verifyHtml = this._dispatchModel.getProperty("/ui/chatLastAnswerHtml");
+          console.log("Verified model HTML length:", verifyHtml ? verifyHtml.length : 0);
+          
+          // Directly update the FormattedText control since binding doesn't work reliably
+          const oFT = this.byId("AiChatAnswer");
+          if (oFT) {
+            console.log("FormattedText current htmlText length:", oFT.getHtmlText() ? oFT.getHtmlText().length : 0);
+            oFT.setHtmlText(htmlContent);
+            console.log("FormattedText AFTER setHtmlText length:", oFT.getHtmlText() ? oFT.getHtmlText().length : 0);
+          }
         } catch (e) {
           // eslint-disable-next-line no-console
           console.error("AI chat failed", e);
-          this._dispatchModel.setProperty(
-            "/ui/chatLastAnswer",
-            "The AI assistant is currently unavailable."
-          );
+          const errText = "The AI assistant is currently unavailable.";
+          const errHtml = "<p><strong>" + errText + "</strong></p>";
+          this._dispatchModel.setProperty("/ui/chatLastAnswer", errText);
+          this._dispatchModel.setProperty("/ui/chatLastAnswerHtml", errHtml);
           MessageToast.show("AI assistant is currently unavailable.");
         }
       },
