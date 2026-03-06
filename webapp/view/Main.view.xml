@@ -688,31 +688,51 @@
 
         <!-- Scrollable thought process content -->
         <ScrollContainer
-          height="320px"
+          height="380px"
           width="100%"
           vertical="true"
           horizontal="false"
           class="sapUiTinyMarginTop">
           <VBox class="sapUiSmallMargin">
-            <FormattedText
-              htmlText="{path: 'dispatch>/mission_briefing/thought_process', formatter: '.formatter.textToHtml'}"
-              width="100%" />
+
+            <!-- LLM-generated plain English explanation -->
+            <Panel
+              headerText="AI Explanation"
+              expandable="false"
+              class="sapUiSmallMarginBottom">
+              <VBox class="sapUiSmallMargin">
+                <FormattedText
+                  htmlText="{path: 'dispatch>/llm_explanation', formatter: '.formatter.textToHtml'}"
+                  width="100%"
+                  visible="{= !!${dispatch>/llm_explanation}}" />
+                <Text
+                  text="No explanation generated."
+                  visible="{= !${dispatch>/llm_explanation}}"
+                  class="sapThemeNeutralColor" />
+              </VBox>
+            </Panel>
 
             <!-- Agent execution trace -->
-            <Title text="Agent Execution Trace" level="H5" class="sapUiSmallMarginTop sapUiTinyMarginBottom" />
-            <ObjectStatus
-              text="{dispatch>/agent_trace/graph}"
-              title="Engine"
-              state="Success"
-              class="sapUiTinyMarginBottom" />
-            <List
-              headerText="Nodes executed"
-              items="{dispatch>/agent_trace/nodes}"
-              class="sapUiTinyMarginBottom">
-              <StandardListItem
-                title="{dispatch>}"
-                icon="sap-icon://process" />
-            </List>
+            <Panel
+              headerText="Agent Execution Trace"
+              expandable="true"
+              expanded="false">
+              <VBox class="sapUiSmallMargin">
+                <ObjectStatus
+                  text="{dispatch>/agent_trace/graph}"
+                  title="Engine"
+                  state="Success"
+                  class="sapUiTinyMarginBottom" />
+                <List
+                  items="{dispatch>/agent_trace/nodes}"
+                  showNoData="false">
+                  <StandardListItem
+                    title="{dispatch>}"
+                    icon="sap-icon://process" />
+                </List>
+              </VBox>
+            </Panel>
+
           </VBox>
         </ScrollContainer>
 

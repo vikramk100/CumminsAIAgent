@@ -546,8 +546,10 @@ def get_dispatch_brief(order_id: str) -> dict[str, Any]:
                 "vision [parallel]",
                 "load_supporting_data [parallel]",
                 "synthesize",
+                "explain",
             ],
         },
+        "llm_explanation": final_state.get("llm_explanation", ""),
     }
 
 

@@ -238,6 +238,7 @@ sap.ui.define(
           };
 
           data.agent_trace = data.agent_trace || { graph: "unknown", nodes: [] };
+          data.llm_explanation = data.llm_explanation || "";
 
           this._dispatchModel.setData({ ...this._dispatchModel.getData(), ...data }, true);
           

@@ -50,6 +50,7 @@ class DispatchState(TypedDict, total=False):
     audit_events: list
     work_order_detail: dict
     mission_briefing: dict
+    llm_explanation: str
     error: Optional[str]
 
 
@@ -184,6 +185,64 @@ def synthesize_node(state: DispatchState) -> dict:
         "work_order_detail": work_order_detail,
         "mission_briefing": mission_briefing,
     }
+
+
+def explain_node(state: DispatchState) -> dict:
+    """
+    Ask llava to write a plain-English explanation of what the agents found.
+    Runs after synthesize so it has the full picture.
+    """
+    if state.get("error"):
+        return {"llm_explanation": ""}
+
+    diag = state.get("diagnostic_result", {})
+    ml = diag.get("ml_prediction", {})
+    presc = state.get("prescription_result", {})
+    wo = state.get("work_order", {})
+    image_analyses = state.get("image_analyses", [])
+
+    failure_label = ml.get("failure_label", "No_Failure")
+    confidence = ml.get("confidence", 0.0)
+    fault_code = ml.get("fault_code", "none")
+    system_affected = diag.get("system_affected", "unknown")
+    tools = presc.get("required_tools", [])
+    repair_time = presc.get("estimated_repair_time", 60)
+    issue = wo.get("issueDescription", "not specified")
+    equipment = state.get("equipment_id", "unknown")
+
+    vision_summary = ""
+    if image_analyses:
+        v = image_analyses[0]
+        vision_summary = (
+            f"\nImage analysis also ran: severity={v.get('severity')}, "
+            f"components={v.get('components_identified', [])}, "
+            f"defects={v.get('defects_found', [])}."
+        )
+
+    prompt = f"""You are explaining what an AI diagnostic system did when it analysed a maintenance work order. Write in plain, conversational English — no bullet points, no JSON, no headers.
+
+Work order details:
+- Equipment: {equipment}
+- Reported issue: {issue}
+
+What the agents found:
+- The ML model predicted: {failure_label} (fault code: {fault_code}) with {confidence*100:.0f}% confidence
+- System affected: {system_affected}
+- Recommended tools: {', '.join(tools) if tools else 'none identified'}
+- Estimated repair time: {repair_time} minutes{vision_summary}
+
+Write 2–3 short paragraphs explaining: (1) what the diagnostic agent did and found, (2) what the prescription agent looked up and recommended, and (3) what a technician should take away from this. Be specific — use the actual values above. Write as if talking directly to the technician."""
+
+    try:
+        from api.llm_client import get_llm_for_agents
+        llm = get_llm_for_agents()
+        response = llm.invoke(prompt)
+        explanation = response.content.strip()
+        logger.info(f"[explain_node] generated explanation ({len(explanation)} chars)")
+        return {"llm_explanation": explanation}
+    except Exception as e:
+        logger.error(f"[explain_node] LLM call failed: {e}")
+        return {"llm_explanation": ""}
 
 
 # ── Chat nodes ─────────────────────────────────────────────────────────────────
@@ -336,6 +395,7 @@ def build_dispatch_graph():
     g.add_node("vision", vision_node)
     g.add_node("load_supporting_data", load_supporting_data_node)
     g.add_node("synthesize", synthesize_node)
+    g.add_node("explain", explain_node)
 
     g.add_edge(START, "load_work_order")
     g.add_edge("load_work_order", "diagnostic")
@@ -350,7 +410,9 @@ def build_dispatch_graph():
     g.add_edge("vision", "synthesize")
     g.add_edge("load_supporting_data", "synthesize")
 
-    g.add_edge("synthesize", END)
+    # explain runs after synthesize has the full picture
+    g.add_edge("synthesize", "explain")
+    g.add_edge("explain", END)
 
     return g.compile()
 
