@@ -7,7 +7,7 @@
   },
   "scripts": {
     "ui5:install": "ui5 --version",
-    "start": "ui5 serve -o /webapp/index.html"
+    "start": "ui5 serve -o /index.html --port 8083"
   }
 }
 

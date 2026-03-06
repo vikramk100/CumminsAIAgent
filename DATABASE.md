@@ -19,6 +19,28 @@ MongoDB database **`sap_bnac`** (configurable via `MONGODB_DB`) holds SAP BNACâ€
 
 ---
 
+## Demo Work Orders
+
+For presentation/testing, run `python scripts/create_demo_work_orders.py` to create 5 detailed work orders:
+
+| Order ID | Equipment | Engine | Fault Code | Status | Description |
+|----------|-----------|--------|------------|--------|-------------|
+| WO-DEMO-001 | TRUCK-X15-001 | X15 | P0300_S3 | Completed | Highway breakdown - Gasket failure (3 confirmations) |
+| WO-DEMO-002 | GEN-X15-DC01 | X15 | TWF_S3 | Completed | Data center generator emergency (2 confirmations) |
+| WO-DEMO-003 | BUS-B67-015 | B6.7 | HDF_S2 | In Progress | Municipal bus cooling system failure (2 confirmations) |
+| WO-DEMO-004 | HARVEST-ISB-007 | ISB | PWF_S3 | In Progress | Combine harvester - Harvest season (2 confirmations) |
+| WO-DEMO-005 | PUMP-X15-003 | X15 | RNF_S2 | Released | Concrete pump - Project deadline (0 confirmations) |
+
+Each demo work order includes:
+- Detailed customer complaint narrative
+- Telematics data and fault codes
+- Machine logs showing telemetry progression to failure
+- Diagnostics with resolution steps and required tools
+- Operations with planned vs actual durations
+- Confirmations documenting the repair journey
+
+---
+
 ## Key Relationships
 
 - **WorkOrder and MachineLog:** `WorkOrder.equipmentId` = `MachineLog.MachineID`

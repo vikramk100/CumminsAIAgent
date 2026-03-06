@@ -1,0 +1,57 @@
+# Cloud Build configuration for deploying to Cloud Run
+# Trigger this with: gcloud builds submit --config cloudbuild.yaml
+
+steps:
+  # Build the Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/cummins-ai-agent:$COMMIT_SHA'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/cummins-ai-agent:latest'
+      - '.'
+
+  # Push the image to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/cummins-ai-agent:$COMMIT_SHA'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/cummins-ai-agent:latest'
+
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'cummins-ai-agent'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/cummins-ai-agent:$COMMIT_SHA'
+      - '--region'
+      - 'us-central1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--memory'
+      - '2Gi'
+      - '--cpu'
+      - '2'
+      - '--timeout'
+      - '300'
+      - '--set-env-vars'
+      - 'GCP_PROJECT_ID=$PROJECT_ID,GCP_REGION=us-central1,VERTEX_MODEL=gemini-2.0-flash-001'
+      - '--set-secrets'
+      - 'MONGODB_PASSWORD=mongodb-password:latest,MONGODB_URI=mongodb-uri:latest'
+
+# Store images in Container Registry
+images:
+  - 'gcr.io/$PROJECT_ID/cummins-ai-agent:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/cummins-ai-agent:latest'
+
+# Build timeout
+timeout: '1200s'

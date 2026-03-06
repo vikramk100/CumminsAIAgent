@@ -280,7 +280,7 @@ class OrchestratorAgent:
     
     def chat(self, order_id: str, question: str, context: Optional[dict] = None) -> dict[str, Any]:
         """
-        Handle chat queries about a work order.
+        Handle chat queries about a work order with comprehensive historical context.
         
         Args:
             order_id: The work order ID
@@ -290,9 +290,19 @@ class OrchestratorAgent:
         Returns:
             Chat response with answer and thought process
         """
+        from api.mcp_server import (
+            get_work_order, 
+            get_work_orders_for_equipment, 
+            count_issues_for_equipment,
+            find_similar_issues,
+            get_equipment_maintenance_history,
+            count_similar_issues,
+            get_historical_fixes,
+            get_confirmations_for_order,
+        )
+        
+        # Build comprehensive context
         if context is None:
-            # Build minimal context
-            from api.mcp_server import get_work_order
             work_order = get_work_order(order_id)
             equipment_id = work_order.get("equipmentId", "")
             diagnostic_result = self.diagnostic_agent.analyze(equipment_id, order_id)
@@ -300,17 +310,96 @@ class OrchestratorAgent:
                 "work_order": work_order,
                 "ml_prediction": diagnostic_result.get("ml_prediction", {}),
             }
+        else:
+            work_order = context.get("work_order", {})
+            equipment_id = work_order.get("equipmentId", "")
         
-        # Use LLM for chat
-        prompt = f"""You are an AI assistant helping a technician with work order {order_id}.
+        question_lower = question.lower()
+        
+        # Gather additional context based on question type
+        additional_context = {}
+        tools_used = []
+        
+        # Check for historical/frequency questions
+        history_keywords = ["how many times", "occurred before", "happened before", "previous", "historical", "history", "past", "frequent", "often", "pattern", "recurring", "repeat"]
+        if any(kw in question_lower for kw in history_keywords):
+            tools_used.append("Equipment Maintenance History")
+            equipment_history = get_equipment_maintenance_history(equipment_id)
+            additional_context["equipment_history"] = equipment_history
+            
+            # Also get issue count for this equipment
+            tools_used.append("Issue Count for Equipment")
+            issue_count = count_issues_for_equipment(equipment_id)
+            additional_context["issue_statistics"] = issue_count
+            
+            # Find similar issues across all equipment
+            issue_desc = work_order.get("issueDescription", "")
+            if issue_desc:
+                tools_used.append("Similar Issues Search")
+                # Extract key words from issue description
+                keywords = " ".join(word for word in issue_desc.split() if len(word) > 3)[:50]
+                similar_count = count_similar_issues(keywords)
+                additional_context["similar_issues_count"] = similar_count
+        
+        # Check for report/summary questions
+        report_keywords = ["report", "summary", "overview", "status", "all work orders", "maintenance record"]
+        if any(kw in question_lower for kw in report_keywords):
+            tools_used.append("Equipment Work Orders")
+            equipment_work_orders = get_work_orders_for_equipment(equipment_id, limit=20)
+            additional_context["equipment_work_orders"] = equipment_work_orders
+            
+            tools_used.append("Confirmations")
+            confirmations = get_confirmations_for_order(order_id)
+            additional_context["confirmations"] = confirmations
+        
+        # Check for similar issue questions
+        similar_keywords = ["similar", "same issue", "other equipment", "other machines", "related problems"]
+        if any(kw in question_lower for kw in similar_keywords):
+            tools_used.append("Similar Issues Search")
+            issue_desc = work_order.get("issueDescription", "")
+            if issue_desc:
+                keywords = " ".join(word for word in issue_desc.split() if len(word) > 3)[:50]
+                similar_issues = find_similar_issues(keywords, limit=15)
+                additional_context["similar_issues"] = similar_issues
+        
+        # Check for resolution/fix questions
+        fix_keywords = ["fix", "resolve", "solution", "repair", "fixed before", "how to repair"]
+        if any(kw in question_lower for kw in fix_keywords):
+            tools_used.append("Historical Fixes")
+            system = work_order.get("issueDescription", "Engine").split()[0] if work_order.get("issueDescription") else "Engine"
+            historical_fixes = get_historical_fixes(system, limit=10)
+            additional_context["historical_fixes"] = historical_fixes
+        
+        # If no specific context gathered, get general equipment history
+        if not additional_context:
+            tools_used.append("Equipment Maintenance History (default)")
+            equipment_history = get_equipment_maintenance_history(equipment_id)
+            additional_context["equipment_history"] = equipment_history
+        
+        # Merge contexts
+        full_context = {**context, **additional_context}
+        
+        # Use LLM for chat with rich context
+        prompt = f"""You are an AI assistant for a maintenance technician. You have access to comprehensive work order and equipment data.
 
-Context:
-{json.dumps(context, indent=2, default=str)}
+CURRENT WORK ORDER: {order_id}
+Equipment ID: {equipment_id}
 
-Question: {question}
+FULL CONTEXT (including historical data):
+{json.dumps(full_context, indent=2, default=str)[:15000]}
 
-Provide a helpful, concise answer focused on this work order and equipment.
-Return JSON with: {{"answer": "...", "thought_process": "..."}}"""
+TOOLS USED TO GATHER THIS DATA: {', '.join(tools_used)}
+
+TECHNICIAN'S QUESTION: {question}
+
+INSTRUCTIONS:
+- Answer the question thoroughly using ALL the context provided above
+- If asked about historical occurrences, count from the equipment_history or issue_statistics
+- If the data shows the answer, provide specific numbers and details
+- Reference specific work order IDs when discussing history
+- Be factual and cite the data
+
+Return JSON with: {{"answer": "your detailed answer here", "thought_process": "explain what data you used to answer"}}"""
         
         try:
             response = self.llm.invoke(prompt)
@@ -321,12 +410,43 @@ Return JSON with: {{"answer": "...", "thought_process": "..."}}"""
             elif "```" in text:
                 text = text.split("```")[1].split("```")[0]
             
-            return json.loads(text)
+            result = json.loads(text)
+            result["tools_used"] = tools_used
+            return result
         except Exception as e:
+            # Provide a data-driven fallback
+            fallback_answer = self._build_fallback_answer(question, full_context, tools_used)
             return {
-                "answer": f"I can help with work order {order_id}. Please ask about the equipment, predicted failures, or repair procedures.",
-                "thought_process": f"Fallback response - LLM error: {str(e)}",
+                "answer": fallback_answer,
+                "thought_process": f"Fallback response using gathered data. Tools used: {', '.join(tools_used)}. Error: {str(e)}",
+                "tools_used": tools_used,
             }
+    
+    def _build_fallback_answer(self, question: str, context: dict, tools_used: list) -> str:
+        """Build a data-driven fallback answer when LLM fails."""
+        question_lower = question.lower()
+        
+        # For "how many times" questions
+        if "how many times" in question_lower or "occurred before" in question_lower:
+            stats = context.get("issue_statistics", {})
+            history = context.get("equipment_history", {})
+            total = stats.get("total_work_orders", 0) or history.get("total_work_orders", 0)
+            if total:
+                issues = stats.get("issues_list", []) or history.get("work_orders", [])
+                issue_summary = ", ".join([f"{wo.get('orderId')}" for wo in issues[:5]])
+                return f"This equipment has had {total} work orders total. Recent work orders include: {issue_summary}. This includes both similar and different types of issues."
+            return "I could not find historical data for this equipment."
+        
+        # For report questions
+        if "report" in question_lower or "summary" in question_lower:
+            history = context.get("equipment_history", {})
+            total = history.get("total_work_orders", 0)
+            completed = history.get("statuses", {}).get("completed", 0)
+            if total:
+                return f"Equipment maintenance report: {total} total work orders, {completed} completed. Common issues: {history.get('common_issues', [])[:3]}"
+            return "No historical data found for generating a report."
+        
+        return f"Based on the data gathered (using {', '.join(tools_used)}), I have information about this work order and equipment but couldn't format a complete answer. Please try rephrasing your question."
 
 
 # ============================================================================

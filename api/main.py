@@ -47,9 +47,32 @@ DIAGNOSTICS_COLLECTION = "diagnostics"
 MANUALS_COLLECTION = "manuals"
 WORK_ORDERS_COLLECTION = "workorders"
 
+# CORS origins (comma-separated in env, or * for all)
+CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "*").split(",")
+if CORS_ORIGINS == ["*"]:
+    CORS_ORIGINS = ["*"]
+
 app = FastAPI(title="Cummins SAP-Style Predictions API")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+app.add_middleware(CORSMiddleware, allow_origins=CORS_ORIGINS, allow_methods=["*"], allow_headers=["*"], allow_credentials=True)
 app.include_router(v1_router)
+
+
+# Health check endpoint for Cloud Run
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for Cloud Run and load balancers."""
+    return {"status": "healthy", "service": "cummins-ai-agent"}
+
+
+@app.get("/")
+async def root():
+    """Root endpoint with API info."""
+    return {
+        "service": "Cummins AI Agent API",
+        "version": "1.0.0",
+        "docs": "/docs",
+        "health": "/health",
+    }
 
 
 def _db():

@@ -1,0 +1,39 @@
+# Docker ignore file
+.git
+.gitignore
+.env
+*.md
+!requirements.txt
+
+# Virtual environment
+.venv
+venv
+env
+
+# Python cache
+__pycache__
+*.py[cod]
+*$py.class
+.pytest_cache
+
+# IDE
+.vscode
+.idea
+
+# Frontend (deployed separately or via Cloud Storage)
+webapp/
+node_modules/
+
+# Test files
+tests/
+
+# Local config files (but keep deployment configs)
+!cloudbuild.yaml
+
+# Logs
+*.log
+
+# Service account key (should use Cloud Run service account instead)
+*credentials*.json
+*service-account*.json
+workorderaiagent*.json

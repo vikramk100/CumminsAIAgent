@@ -9,7 +9,7 @@ High-level structure of the Cummins AI Agent: backend API, multi-agent dispatche
 ```
 CumminsAIAgent/
 ├── api/                        # FastAPI backend
-│   ├── main.py                 # App entry, CORS, /api/predictions, /api/predict, /api/triggerWorkOrder
+│   ├── main.py                 # App entry, CORS, health check, /api/predictions, /api/predict
 │   ├── criticality.py          # confidence + severity → criticality (0–3)
 │   ├── llm_client.py           # GCP Vertex AI LLM client (replaces Gemini API key)
 │   ├── mcp_server.py           # Model Context Protocol server (FastMCP) - MongoDB tools
@@ -22,23 +22,47 @@ CumminsAIAgent/
 │   ├── dispatch_agent.py       # [LEGACY] Original monolithic agent (kept for reference)
 │   ├── agent_tools.py          # [LEGACY] Direct MongoDB queries (now in mcp_server.py)
 │   └── v1/
-│       └── router.py           # GET /api/v1/equipments, /api/v1/workorders, /api/v1/dispatch-brief/{orderId}, POST /api/v1/audit-trail
+│       └── router.py           # GET /api/v1/equipments, /api/v1/workorders, etc.
 ├── scripts/                    # Data & ML scripts (Python)
+│   └── create_demo_work_orders.py  # Creates 5 demo work orders for presentation
 ├── schemas/                    # Mongoose schemas (Node) for reference
 ├── models/                     # Trained model (e.g. failure_classifier.joblib)
-├── webapp/                     # SAP UI5 frontend (routed app: Launchpad → Work Orders / Equipments → Detail)
-│   ├── Component.js            # Root component; models: dispatch, wo; router.initialize()
-│   ├── init.js                 # ComponentContainer loads cummins.dispatcher
-│   ├── manifest.json           # Root view: App; routing: launchpad, workorders, workorders/{orderId}, equipments
-│   ├── view/
-│   │   ├── App.view.xml        # Shell: Bar "SAP - Business Network Portal" + App (pages)
-│   │   ├── Launchpad.view.xml  # Tiles: Work Orders and Confirmations, Equipments
-│   │   ├── WorkOrders.view.xml # Table with filters; per-row expandable confirmations; row → detail
-│   │   ├── Equipments.view.xml # Equipment list (equipmentId, engineModel, criticality)
-│   │   └── Main.view.xml       # Work order detail: ObjectPageLayout (overview, telemetry, insights, timeline)
-│   └── controller/             # App, Launchpad, WorkOrders, Equipments, Main
-└── tests/                      # Pytest (ML, tools, API)
+├── webapp/                     # SAP UI5 frontend
+├── tests/                      # Pytest (ML, tools, API)
+├── Dockerfile                  # Container image for Cloud Run deployment
+├── cloudbuild.yaml             # Cloud Build CI/CD configuration
+└── deploy-gcp.ps1              # PowerShell deployment script
 ```
+
+---
+
+## Deployment
+
+### Local Development
+- **Backend:** `uvicorn api.main:app --reload` (port 8000)
+- **Frontend:** `npm start` (port 8083)
+- **URLs:** http://localhost:8000/docs (API), http://localhost:8083/index.html (UI)
+
+### GCP Cloud Run (Production)
+
+The application is deployed to **Google Cloud Run** with automatic CI/CD:
+
+| Component | Service | URL |
+|-----------|---------|-----|
+| Backend API | Cloud Run | `https://cummins-ai-agent-XXXXX-uc.a.run.app` |
+| Frontend | Cloud Storage | `https://storage.googleapis.com/workorderaiagent-frontend/index.html` |
+| LLM | Vertex AI | `gemini-2.0-flash-001` in `us-central1` |
+| Database | MongoDB Atlas | Cloud-hosted cluster |
+
+### CI/CD Pipeline
+
+Every push to `main` branch triggers automatic deployment via **Cloud Build**:
+
+```
+GitHub (main) → Cloud Build → Docker Build → Container Registry → Cloud Run
+```
+
+Configuration: `cloudbuild.yaml`
 
 ---
 
@@ -168,6 +192,11 @@ The MCP server (`api/mcp_server.py`) wraps all MongoDB database interactions as 
 | `get_audit_trail(order_id)` | Get audit events |
 | `get_engine_models()` | List available engine models |
 | `list_work_orders(limit, status_filter)` | List work orders |
+| `get_work_orders_for_equipment(equipment_id)` | Get all work orders for an equipment (historical) |
+| `count_issues_for_equipment(equipment_id)` | Statistics on issues per equipment |
+| `find_similar_issues(issue_keywords)` | Find work orders with similar descriptions |
+| `get_equipment_maintenance_history(equipment_id)` | Full maintenance history + telemetry trends |
+| `count_similar_issues(issue_keywords)` | Count occurrences across all equipment |
 
 ---
 
@@ -230,7 +259,23 @@ Run from project root with venv active; optional env: `CLEAR_COLLECTIONS`, `CLEA
 - **Equipments page:** Table of equipments (Equipment ID, Engine Model, Latest Criticality); search. Data: GET `/api/v1/equipments`.
 - **Work order detail (Main view):** ObjectPageLayout. Header: Equipment ID, Failure label, Risk level (ObjectStatus), Confidence (ProgressIndicator). Sections: **Work Order Overview** (SimpleForm: orderId, equipmentId, status, priority, technician, daysToSolve); **Issue & Equipment Details** (Issue Description text, Equipment Telemetry Snapshot: Process/Air temperature, Rotational Speed, Torque, Tool Wear); **Insights** (root_cause_analysis, "Talk to AI" button, "Show Thought Process" popup with thumbs up/down); **Preparation** (required_tools with checkboxes + same Talk to AI / Thought Process buttons; audit-trail); **Documentation** (manual_reference_snippet); **Timeline** (operations, confirmations, audit events). Thumbs up/down send feedback via POST `/api/v1/insight-feedback`. Data: GET `/api/v1/dispatch-brief/{orderId}`; controller normalizes `work_order_detail` and telemetry for binding; placeholder issue description when missing.
 - **API base:** Configurable via `?apiBase=...` and `localStorage`; default `http://localhost:8000`.
-- **Serve:** `npm start` (UI5 tooling); app often available at `http://localhost:8080/index.html` or `http://localhost:8080/webapp/index.html`.
+- **Serve:** `npm start` (UI5 tooling); app available at `http://localhost:8083/index.html`.
+
+---
+
+## Demo Work Orders
+
+For presentation purposes, 5 detailed demo work orders are available:
+
+| Order ID | Equipment | Engine | Status | Scenario |
+|----------|-----------|--------|--------|----------|
+| WO-DEMO-001 | TRUCK-X15-001 | X15 | Completed | Highway breakdown - Gasket failure (two-trip inefficiency) |
+| WO-DEMO-002 | GEN-X15-DC01 | X15 | Completed | Data center generator emergency (AI-assisted success) |
+| WO-DEMO-003 | BUS-B67-015 | B6.7 | In Progress | Municipal bus cooling system failure |
+| WO-DEMO-004 | HARVEST-ISB-007 | ISB | In Progress | Combine harvester - Harvest season emergency |
+| WO-DEMO-005 | PUMP-X15-003 | X15 | Released | Concrete pump - Project deadline at risk |
+
+Create demo data: `python scripts/create_demo_work_orders.py`
 
 ---
 

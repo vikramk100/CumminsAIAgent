@@ -1,9 +1,41 @@
 # Cummins AI Agent – SAP BNAC + Machine Logs
 
-MongoDB schema and data pipeline that replicates an SAP BNAC environment integrated with external machine failure logs.
+MongoDB schema and data pipeline that replicates an SAP BNAC environment integrated with external machine failure logs. Features **multi-agent AI orchestration** for intelligent work order dispatch briefings.
 
 - **[Database summary](DATABASE.md)** – Collections, relationships, and schema overview.
 - **[Software architecture](ARCHITECTURE.md)** – Backend, ML pipeline, scripts, and UI5 frontend.
+
+---
+
+## Quick Start
+
+### Local Development
+
+```bash
+# 1. Clone and setup
+git clone <repo-url>
+cd CumminsAIAgent
+
+# 2. Backend
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+cp .env.example .env  # Configure MongoDB and GCP credentials
+uvicorn api.main:app --reload  # http://localhost:8000
+
+# 3. Frontend
+npm install
+npm start  # http://localhost:8083/index.html
+```
+
+### Production (GCP Cloud Run)
+
+The application auto-deploys to GCP Cloud Run on every push to `main`:
+
+| Service | URL |
+|---------|-----|
+| **Backend API** | `https://cummins-ai-agent-XXXXX-uc.a.run.app` |
+| **API Docs** | `https://cummins-ai-agent-XXXXX-uc.a.run.app/docs` |
 
 ---
 
@@ -99,9 +131,7 @@ npm install
 npm start
 ```
 
-The UI5 dev server will print a URL such as:
-
-- `http://localhost:8080/webapp/index.html`
+The UI5 dev server will start at: **http://localhost:8083/index.html**
 
 #### 4.1 Launchpad → Work Orders / Equipments
 
@@ -136,6 +166,62 @@ Tests use **real MongoDB**. The test run uses a separate database so production 
 ```bash
 pytest -q
 ```
+
+### 6. Demo Work Orders
+
+Create realistic demo work orders for presentation:
+
+```bash
+python scripts/create_demo_work_orders.py
+```
+
+This creates 5 detailed work orders with full telemetry, diagnostics, operations, and confirmations:
+
+| Order ID | Scenario |
+|----------|----------|
+| WO-DEMO-001 | Highway breakdown - Gasket failure |
+| WO-DEMO-002 | Data center generator emergency |
+| WO-DEMO-003 | Municipal bus cooling system failure |
+| WO-DEMO-004 | Combine harvester - Harvest emergency |
+| WO-DEMO-005 | Concrete pump - Project deadline |
+
+---
+
+## Deploy to GCP Cloud Run
+
+### Prerequisites
+
+1. Install [Google Cloud SDK](https://cloud.google.com/sdk/docs/install)
+2. Authenticate: `gcloud auth login`
+3. Set project: `gcloud config set project workorderaiagent`
+
+### Manual Deployment
+
+```bash
+# Enable required APIs
+gcloud services enable cloudbuild.googleapis.com run.googleapis.com secretmanager.googleapis.com aiplatform.googleapis.com
+
+# Create secrets (first time only)
+echo "YOUR_MONGODB_PASSWORD" | gcloud secrets create mongodb-password --data-file=-
+echo "YOUR_FULL_MONGODB_URI" | gcloud secrets create mongodb-uri --data-file=-
+
+# Deploy
+gcloud builds submit --config cloudbuild.yaml --substitutions=COMMIT_SHA=latest
+```
+
+### CI/CD (Automatic Deployment)
+
+Every push to `main` triggers automatic deployment via Cloud Build. Set up the trigger:
+
+```bash
+gcloud builds triggers create github \
+  --repo-name=CumminsAIAgent \
+  --repo-owner=YOUR_GITHUB_USERNAME \
+  --branch-pattern=^main$ \
+  --build-config=cloudbuild.yaml
+```
+
+Or use the GCP Console: **Cloud Build → Triggers → Create Trigger**
 
 ---
 

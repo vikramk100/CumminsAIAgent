@@ -176,6 +176,73 @@ def mcp_get_engine_models() -> list[str]:
     return get_engine_models()
 
 
+@tool
+def mcp_get_work_orders_for_equipment(equipment_id: str, limit: int = 50) -> list[dict[str, Any]]:
+    """
+    [MCP Tool] Get all work orders for a specific equipment (historical).
+    Args:
+        equipment_id: The equipment ID
+        limit: Max results
+    Returns:
+        List of work orders for this equipment
+    """
+    from api.mcp_server import get_work_orders_for_equipment
+    return get_work_orders_for_equipment(equipment_id, limit)
+
+
+@tool
+def mcp_count_issues_for_equipment(equipment_id: str) -> dict[str, Any]:
+    """
+    [MCP Tool] Count issues/work orders for an equipment.
+    Args:
+        equipment_id: The equipment ID
+    Returns:
+        Statistics with total_work_orders, by_status, by_priority, issues_list
+    """
+    from api.mcp_server import count_issues_for_equipment
+    return count_issues_for_equipment(equipment_id)
+
+
+@tool
+def mcp_find_similar_issues(issue_keywords: str, limit: int = 20) -> list[dict[str, Any]]:
+    """
+    [MCP Tool] Find work orders with similar issue descriptions.
+    Args:
+        issue_keywords: Keywords to search for
+        limit: Max results
+    Returns:
+        List of similar work orders with resolutions
+    """
+    from api.mcp_server import find_similar_issues
+    return find_similar_issues(issue_keywords, limit)
+
+
+@tool
+def mcp_get_equipment_maintenance_history(equipment_id: str) -> dict[str, Any]:
+    """
+    [MCP Tool] Get comprehensive maintenance history for equipment.
+    Args:
+        equipment_id: The equipment ID
+    Returns:
+        Full history with work_orders, common_issues, avg_repair_time, telemetry
+    """
+    from api.mcp_server import get_equipment_maintenance_history
+    return get_equipment_maintenance_history(equipment_id)
+
+
+@tool
+def mcp_count_similar_issues(issue_keywords: str) -> dict[str, Any]:
+    """
+    [MCP Tool] Count how many times similar issues occurred.
+    Args:
+        issue_keywords: Keywords describing the issue
+    Returns:
+        Count statistics and sample work orders
+    """
+    from api.mcp_server import count_similar_issues
+    return count_similar_issues(issue_keywords)
+
+
 # ============================================================================
 # Agent Tool Sets
 # ============================================================================
@@ -196,7 +263,15 @@ PRESCRIPTION_TOOLS = [
     mcp_get_audit_trail,
 ]
 
-ALL_MCP_TOOLS = DIAGNOSTIC_TOOLS + PRESCRIPTION_TOOLS
+HISTORICAL_TOOLS = [
+    mcp_get_work_orders_for_equipment,
+    mcp_count_issues_for_equipment,
+    mcp_find_similar_issues,
+    mcp_get_equipment_maintenance_history,
+    mcp_count_similar_issues,
+]
+
+ALL_MCP_TOOLS = DIAGNOSTIC_TOOLS + PRESCRIPTION_TOOLS + HISTORICAL_TOOLS
 
 
 # ============================================================================
