@@ -119,7 +119,7 @@ class UpdateWorkOrderBody(BaseModel):
 
 @router.post("/workorders")
 def create_workorder(body: CreateWorkOrderBody):
-    """Create a new work order. orderId is auto-generated."""
+    """Create a new work order. orderId is auto-generated. Auto-generates prep recommendations."""
     db = _get_db()
     coll = db[WORK_ORDERS_COLLECTION]
     count = coll.count_documents({})
@@ -140,6 +140,10 @@ def create_workorder(body: CreateWorkOrderBody):
     if body.selectedCategories is not None:
         doc["selectedCategories"] = body.selectedCategories
     coll.insert_one(doc)
+    
+    # Auto-generate prep recommendations for this work order
+    _generate_prep_for_work_order(db, order_id, body.equipmentId)
+    
     out = {k: v for k, v in doc.items() if k != "_id"}
     return out
 
@@ -418,6 +422,68 @@ def insight_feedback(body: InsightFeedbackBody):
 TECHNICIAN_TOOLS_COLLECTION = "technician_tools"
 SPARE_PARTS_COLLECTION = "spare_parts"
 PREP_ORDERS_COLLECTION = "prep_orders"
+WORK_ORDER_PREP_COLLECTION = "work_order_prep"
+
+
+def _generate_prep_for_work_order(db, order_id: str, equipment_id: str, force: bool = False):
+    """
+    Generate and store recommended tools/parts for a work order.
+    Called automatically when work order is created.
+    If force=True, regenerates even if recommendations exist.
+    """
+    prep_coll = db[WORK_ORDER_PREP_COLLECTION]
+    
+    # Check if already exists
+    existing = prep_coll.find_one({"orderId": order_id})
+    if existing and not force:
+        return existing
+    
+    # Get equipment's engine model from machine logs or default
+    machine_log = db["machinelogs"].find_one({"MachineID": equipment_id})
+    engine_model = "X15"  # Default
+    
+    # Get tools compatible with this engine
+    tools = list(
+        db[TECHNICIAN_TOOLS_COLLECTION]
+        .find({"engineModels": engine_model}, {"_id": 0})
+        .limit(15)
+    )
+    
+    # Get parts compatible with this engine
+    parts = list(
+        db[SPARE_PARTS_COLLECTION]
+        .find({"engineModels": engine_model}, {"_id": 0})
+        .limit(15)
+    )
+    
+    # Add selection state (for UI)
+    for tool in tools:
+        tool["selected"] = False
+        tool["hasItem"] = tool.get("availability") != "out_of_stock"
+    
+    for part in parts:
+        part["selected"] = False
+        part["hasItem"] = part.get("availability") != "out_of_stock"
+    
+    now = datetime.now(timezone.utc)
+    prep_doc = {
+        "orderId": order_id,
+        "equipmentId": equipment_id,
+        "engineModel": engine_model,
+        "recommendedTools": tools,
+        "recommendedParts": parts,
+        "generatedAt": now,
+        "updatedAt": now
+    }
+    
+    if existing:
+        prep_coll.update_one({"orderId": order_id}, {"$set": prep_doc})
+    else:
+        prep_coll.insert_one(prep_doc)
+    
+    # Remove _id for return
+    prep_doc.pop("_id", None)
+    return prep_doc
 
 
 # ---------- Technician Tools CRUD ----------
@@ -827,8 +893,8 @@ def delete_prep_order(prepOrderId: str):
 def get_recommended_prep(orderId: str):
     """
     Get recommended tools and spare parts for a work order.
-    Returns items based on the work order's equipment and issue description.
-    AI-powered recommendations based on historical fixes.
+    Returns pre-generated recommendations stored when work order was created.
+    If not found, generates and stores them on-the-fly.
     """
     db = _get_db()
     
@@ -837,39 +903,63 @@ def get_recommended_prep(orderId: str):
     if not wo:
         raise HTTPException(status_code=404, detail=f"Work order {orderId} not found")
     
-    # Get equipment's engine model from machine logs or default
+    # Check for stored prep recommendations
+    prep = db[WORK_ORDER_PREP_COLLECTION].find_one({"orderId": orderId}, {"_id": 0})
+    
+    if not prep:
+        # Generate if not exists (for older work orders)
+        equipment_id = wo.get("equipmentId", "")
+        prep = _generate_prep_for_work_order(db, orderId, equipment_id)
+    
+    return prep
+
+
+@router.post("/workorders/{orderId}/regenerate-prep")
+def regenerate_prep(orderId: str):
+    """
+    Regenerate prep recommendations for a work order.
+    Useful if tools/parts inventory has changed.
+    """
+    db = _get_db()
+    
+    wo = db[WORK_ORDERS_COLLECTION].find_one({"orderId": orderId}, {"_id": 0})
+    if not wo:
+        raise HTTPException(status_code=404, detail=f"Work order {orderId} not found")
+    
     equipment_id = wo.get("equipmentId", "")
-    machine_log = db["machinelogs"].find_one({"MachineID": equipment_id})
-    # Default to X15 if not found
-    engine_model = "X15"
+    prep = _generate_prep_for_work_order(db, orderId, equipment_id, force=True)
+    return prep
+
+
+@router.post("/workorders/backfill-prep")
+def backfill_prep_recommendations():
+    """
+    Backfill prep recommendations for all existing work orders that don't have them.
+    Run this once after deploying the auto-generation feature.
+    """
+    db = _get_db()
     
-    # Get tools compatible with this engine
-    tools = list(
-        db[TECHNICIAN_TOOLS_COLLECTION]
-        .find({"engineModels": engine_model}, {"_id": 0})
-        .limit(15)
-    )
+    workorders = list(db[WORK_ORDERS_COLLECTION].find({}, {"orderId": 1, "equipmentId": 1, "_id": 0}))
     
-    # Get parts compatible with this engine
-    parts = list(
-        db[SPARE_PARTS_COLLECTION]
-        .find({"engineModels": engine_model}, {"_id": 0})
-        .limit(15)
-    )
+    generated = 0
+    skipped = 0
     
-    # Add selection state (for UI)
-    for tool in tools:
-        tool["selected"] = False
-        tool["hasItem"] = tool.get("availability") != "out_of_stock"
-    
-    for part in parts:
-        part["selected"] = False
-        part["hasItem"] = part.get("availability") != "out_of_stock"
+    for wo in workorders:
+        order_id = wo.get("orderId")
+        equipment_id = wo.get("equipmentId", "")
+        
+        # Check if already exists
+        existing = db[WORK_ORDER_PREP_COLLECTION].find_one({"orderId": order_id})
+        if existing:
+            skipped += 1
+            continue
+        
+        _generate_prep_for_work_order(db, order_id, equipment_id)
+        generated += 1
     
     return {
-        "orderId": orderId,
-        "equipmentId": equipment_id,
-        "engineModel": engine_model,
-        "recommendedTools": tools,
-        "recommendedParts": parts
+        "ok": True,
+        "generated": generated,
+        "skipped": skipped,
+        "total": len(workorders)
     }
