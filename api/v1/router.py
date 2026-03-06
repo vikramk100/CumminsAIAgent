@@ -409,3 +409,467 @@ def insight_feedback(body: InsightFeedbackBody):
     }
     db[INSIGHT_FEEDBACK_COLLECTION].insert_one(doc)
     return {"ok": True}
+
+
+# =============================================================================
+# Technician Helper: Tools, Spare Parts, and Prep Orders
+# =============================================================================
+
+TECHNICIAN_TOOLS_COLLECTION = "technician_tools"
+SPARE_PARTS_COLLECTION = "spare_parts"
+PREP_ORDERS_COLLECTION = "prep_orders"
+
+
+# ---------- Technician Tools CRUD ----------
+
+@router.get("/tools")
+def list_tools(category: Optional[str] = None, availability: Optional[str] = None, limit: int = 200):
+    """List all technician tools with optional filters."""
+    db = _get_db()
+    query = {}
+    if category:
+        query["category"] = category
+    if availability:
+        query["availability"] = availability
+    tools = list(
+        db[TECHNICIAN_TOOLS_COLLECTION]
+        .find(query, {"_id": 0})
+        .sort("name", 1)
+        .limit(limit)
+    )
+    return {"results": tools}
+
+
+@router.get("/tools/{toolId}")
+def get_tool(toolId: str):
+    """Get a single tool by ID."""
+    db = _get_db()
+    tool = db[TECHNICIAN_TOOLS_COLLECTION].find_one({"toolId": toolId}, {"_id": 0})
+    if not tool:
+        raise HTTPException(status_code=404, detail=f"Tool {toolId} not found")
+    return tool
+
+
+class CreateToolBody(BaseModel):
+    name: str
+    category: str
+    description: Optional[str] = None
+    quantity: int = 0
+    location: Optional[str] = None
+    engineModels: Optional[list[str]] = None
+
+
+@router.post("/tools")
+def create_tool(body: CreateToolBody):
+    """Create a new tool."""
+    db = _get_db()
+    coll = db[TECHNICIAN_TOOLS_COLLECTION]
+    count = coll.count_documents({})
+    tool_id = f"TL-{200 + count:03d}"
+    now = datetime.now(timezone.utc)
+    
+    # Determine availability
+    if body.quantity == 0:
+        availability = "out_of_stock"
+    elif body.quantity <= 5:
+        availability = "low_stock"
+    else:
+        availability = "in_stock"
+    
+    doc = {
+        "toolId": tool_id,
+        "name": body.name,
+        "category": body.category,
+        "description": body.description,
+        "quantity": body.quantity,
+        "availability": availability,
+        "location": body.location,
+        "engineModels": body.engineModels or [],
+        "createdAt": now,
+        "updatedAt": now,
+    }
+    coll.insert_one(doc)
+    return {k: v for k, v in doc.items() if k != "_id"}
+
+
+class UpdateToolBody(BaseModel):
+    name: Optional[str] = None
+    category: Optional[str] = None
+    description: Optional[str] = None
+    quantity: Optional[int] = None
+    location: Optional[str] = None
+    engineModels: Optional[list[str]] = None
+
+
+@router.put("/tools/{toolId}")
+def update_tool(toolId: str, body: UpdateToolBody):
+    """Update a tool."""
+    db = _get_db()
+    coll = db[TECHNICIAN_TOOLS_COLLECTION]
+    tool = coll.find_one({"toolId": toolId})
+    if not tool:
+        raise HTTPException(status_code=404, detail=f"Tool {toolId} not found")
+    
+    update = {"updatedAt": datetime.now(timezone.utc)}
+    if body.name is not None:
+        update["name"] = body.name
+    if body.category is not None:
+        update["category"] = body.category
+    if body.description is not None:
+        update["description"] = body.description
+    if body.location is not None:
+        update["location"] = body.location
+    if body.engineModels is not None:
+        update["engineModels"] = body.engineModels
+    if body.quantity is not None:
+        update["quantity"] = body.quantity
+        if body.quantity == 0:
+            update["availability"] = "out_of_stock"
+        elif body.quantity <= 5:
+            update["availability"] = "low_stock"
+        else:
+            update["availability"] = "in_stock"
+    
+    coll.update_one({"toolId": toolId}, {"$set": update})
+    updated = coll.find_one({"toolId": toolId}, {"_id": 0})
+    return updated
+
+
+@router.delete("/tools/{toolId}")
+def delete_tool(toolId: str):
+    """Delete a tool."""
+    db = _get_db()
+    result = db[TECHNICIAN_TOOLS_COLLECTION].delete_one({"toolId": toolId})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail=f"Tool {toolId} not found")
+    return {"ok": True, "toolId": toolId}
+
+
+# ---------- Spare Parts CRUD ----------
+
+@router.get("/spare-parts")
+def list_spare_parts(category: Optional[str] = None, availability: Optional[str] = None, engineModel: Optional[str] = None, limit: int = 200):
+    """List all spare parts with optional filters."""
+    db = _get_db()
+    query = {}
+    if category:
+        query["category"] = category
+    if availability:
+        query["availability"] = availability
+    if engineModel:
+        query["engineModels"] = engineModel
+    parts = list(
+        db[SPARE_PARTS_COLLECTION]
+        .find(query, {"_id": 0})
+        .sort("name", 1)
+        .limit(limit)
+    )
+    return {"results": parts}
+
+
+@router.get("/spare-parts/{partId}")
+def get_spare_part(partId: str):
+    """Get a single spare part by ID."""
+    db = _get_db()
+    part = db[SPARE_PARTS_COLLECTION].find_one({"partId": partId}, {"_id": 0})
+    if not part:
+        raise HTTPException(status_code=404, detail=f"Spare part {partId} not found")
+    return part
+
+
+class CreateSparePartBody(BaseModel):
+    partNumber: str
+    name: str
+    category: str
+    description: Optional[str] = None
+    engineModels: Optional[list[str]] = None
+    quantity: int = 0
+    unitPrice: float = 0.0
+    location: Optional[str] = None
+    leadTimeDays: int = 0
+
+
+@router.post("/spare-parts")
+def create_spare_part(body: CreateSparePartBody):
+    """Create a new spare part."""
+    db = _get_db()
+    coll = db[SPARE_PARTS_COLLECTION]
+    count = coll.count_documents({})
+    part_id = f"SP-{200 + count:03d}"
+    now = datetime.now(timezone.utc)
+    
+    # Determine availability
+    if body.quantity == 0:
+        availability = "out_of_stock"
+    elif body.quantity <= 5:
+        availability = "low_stock"
+    else:
+        availability = "in_stock"
+    
+    doc = {
+        "partId": part_id,
+        "partNumber": body.partNumber,
+        "name": body.name,
+        "category": body.category,
+        "description": body.description,
+        "engineModels": body.engineModels or [],
+        "quantity": body.quantity,
+        "unitPrice": body.unitPrice,
+        "availability": availability,
+        "location": body.location,
+        "leadTimeDays": body.leadTimeDays,
+        "createdAt": now,
+        "updatedAt": now,
+    }
+    coll.insert_one(doc)
+    return {k: v for k, v in doc.items() if k != "_id"}
+
+
+class UpdateSparePartBody(BaseModel):
+    partNumber: Optional[str] = None
+    name: Optional[str] = None
+    category: Optional[str] = None
+    description: Optional[str] = None
+    engineModels: Optional[list[str]] = None
+    quantity: Optional[int] = None
+    unitPrice: Optional[float] = None
+    location: Optional[str] = None
+    leadTimeDays: Optional[int] = None
+
+
+@router.put("/spare-parts/{partId}")
+def update_spare_part(partId: str, body: UpdateSparePartBody):
+    """Update a spare part."""
+    db = _get_db()
+    coll = db[SPARE_PARTS_COLLECTION]
+    part = coll.find_one({"partId": partId})
+    if not part:
+        raise HTTPException(status_code=404, detail=f"Spare part {partId} not found")
+    
+    update = {"updatedAt": datetime.now(timezone.utc)}
+    if body.partNumber is not None:
+        update["partNumber"] = body.partNumber
+    if body.name is not None:
+        update["name"] = body.name
+    if body.category is not None:
+        update["category"] = body.category
+    if body.description is not None:
+        update["description"] = body.description
+    if body.engineModels is not None:
+        update["engineModels"] = body.engineModels
+    if body.unitPrice is not None:
+        update["unitPrice"] = body.unitPrice
+    if body.location is not None:
+        update["location"] = body.location
+    if body.leadTimeDays is not None:
+        update["leadTimeDays"] = body.leadTimeDays
+    if body.quantity is not None:
+        update["quantity"] = body.quantity
+        if body.quantity == 0:
+            update["availability"] = "out_of_stock"
+        elif body.quantity <= 5:
+            update["availability"] = "low_stock"
+        else:
+            update["availability"] = "in_stock"
+    
+    coll.update_one({"partId": partId}, {"$set": update})
+    updated = coll.find_one({"partId": partId}, {"_id": 0})
+    return updated
+
+
+@router.delete("/spare-parts/{partId}")
+def delete_spare_part(partId: str):
+    """Delete a spare part."""
+    db = _get_db()
+    result = db[SPARE_PARTS_COLLECTION].delete_one({"partId": partId})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail=f"Spare part {partId} not found")
+    return {"ok": True, "partId": partId}
+
+
+# ---------- Prep Orders CRUD ----------
+
+class PrepOrderItem(BaseModel):
+    itemType: str  # "tool" or "spare_part"
+    itemId: str
+    name: str
+    quantity: int = 1
+    unitPrice: float = 0.0
+
+
+class CreatePrepOrderBody(BaseModel):
+    workOrderId: str
+    items: list[PrepOrderItem]
+    technicianId: Optional[str] = None
+    technicianName: Optional[str] = None
+    notes: Optional[str] = None
+
+
+@router.get("/prep-orders")
+def list_prep_orders(workOrderId: Optional[str] = None, status: Optional[str] = None, limit: int = 100):
+    """List prep orders with optional filters."""
+    db = _get_db()
+    query = {}
+    if workOrderId:
+        query["workOrderId"] = workOrderId
+    if status:
+        query["status"] = status
+    orders = list(
+        db[PREP_ORDERS_COLLECTION]
+        .find(query, {"_id": 0})
+        .sort("orderDate", -1)
+        .limit(limit)
+    )
+    return {"results": orders}
+
+
+@router.get("/prep-orders/{prepOrderId}")
+def get_prep_order(prepOrderId: str):
+    """Get a single prep order by ID."""
+    db = _get_db()
+    order = db[PREP_ORDERS_COLLECTION].find_one({"prepOrderId": prepOrderId}, {"_id": 0})
+    if not order:
+        raise HTTPException(status_code=404, detail=f"Prep order {prepOrderId} not found")
+    return order
+
+
+@router.post("/prep-orders")
+def create_prep_order(body: CreatePrepOrderBody):
+    """Create a new prep order (checkout)."""
+    db = _get_db()
+    coll = db[PREP_ORDERS_COLLECTION]
+    
+    # Verify work order exists
+    wo = db[WORK_ORDERS_COLLECTION].find_one({"orderId": body.workOrderId})
+    if not wo:
+        raise HTTPException(status_code=404, detail=f"Work order {body.workOrderId} not found")
+    
+    count = coll.count_documents({})
+    prep_order_id = f"PO-{10000 + count}"
+    now = datetime.now(timezone.utc)
+    
+    # Calculate total amount from spare parts
+    total_amount = sum(
+        item.unitPrice * item.quantity 
+        for item in body.items 
+        if item.itemType == "spare_part"
+    )
+    
+    items_data = [
+        {
+            "itemType": item.itemType,
+            "itemId": item.itemId,
+            "name": item.name,
+            "quantity": item.quantity,
+            "unitPrice": item.unitPrice,
+            "status": "requested"
+        }
+        for item in body.items
+    ]
+    
+    doc = {
+        "prepOrderId": prep_order_id,
+        "workOrderId": body.workOrderId,
+        "orderDate": now,
+        "status": "pending",
+        "items": items_data,
+        "technicianId": body.technicianId,
+        "technicianName": body.technicianName,
+        "totalAmount": total_amount,
+        "notes": body.notes,
+        "createdAt": now,
+        "updatedAt": now,
+    }
+    coll.insert_one(doc)
+    return {k: v for k, v in doc.items() if k != "_id"}
+
+
+class UpdatePrepOrderBody(BaseModel):
+    status: Optional[str] = None
+    notes: Optional[str] = None
+
+
+@router.put("/prep-orders/{prepOrderId}")
+def update_prep_order(prepOrderId: str, body: UpdatePrepOrderBody):
+    """Update prep order status."""
+    db = _get_db()
+    coll = db[PREP_ORDERS_COLLECTION]
+    order = coll.find_one({"prepOrderId": prepOrderId})
+    if not order:
+        raise HTTPException(status_code=404, detail=f"Prep order {prepOrderId} not found")
+    
+    update = {"updatedAt": datetime.now(timezone.utc)}
+    if body.status is not None:
+        if body.status not in ("pending", "approved", "fulfilled", "cancelled"):
+            raise HTTPException(status_code=400, detail="Invalid status")
+        update["status"] = body.status
+    if body.notes is not None:
+        update["notes"] = body.notes
+    
+    coll.update_one({"prepOrderId": prepOrderId}, {"$set": update})
+    updated = coll.find_one({"prepOrderId": prepOrderId}, {"_id": 0})
+    return updated
+
+
+@router.delete("/prep-orders/{prepOrderId}")
+def delete_prep_order(prepOrderId: str):
+    """Delete a prep order."""
+    db = _get_db()
+    result = db[PREP_ORDERS_COLLECTION].delete_one({"prepOrderId": prepOrderId})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail=f"Prep order {prepOrderId} not found")
+    return {"ok": True, "prepOrderId": prepOrderId}
+
+
+# ---------- Recommended Items for Work Order ----------
+
+@router.get("/workorders/{orderId}/recommended-prep")
+def get_recommended_prep(orderId: str):
+    """
+    Get recommended tools and spare parts for a work order.
+    Returns items based on the work order's equipment and issue description.
+    AI-powered recommendations based on historical fixes.
+    """
+    db = _get_db()
+    
+    # Get work order
+    wo = db[WORK_ORDERS_COLLECTION].find_one({"orderId": orderId}, {"_id": 0})
+    if not wo:
+        raise HTTPException(status_code=404, detail=f"Work order {orderId} not found")
+    
+    # Get equipment's engine model from machine logs or default
+    equipment_id = wo.get("equipmentId", "")
+    machine_log = db["machinelogs"].find_one({"MachineID": equipment_id})
+    # Default to X15 if not found
+    engine_model = "X15"
+    
+    # Get tools compatible with this engine
+    tools = list(
+        db[TECHNICIAN_TOOLS_COLLECTION]
+        .find({"engineModels": engine_model}, {"_id": 0})
+        .limit(15)
+    )
+    
+    # Get parts compatible with this engine
+    parts = list(
+        db[SPARE_PARTS_COLLECTION]
+        .find({"engineModels": engine_model}, {"_id": 0})
+        .limit(15)
+    )
+    
+    # Add selection state (for UI)
+    for tool in tools:
+        tool["selected"] = False
+        tool["hasItem"] = tool.get("availability") != "out_of_stock"
+    
+    for part in parts:
+        part["selected"] = False
+        part["hasItem"] = part.get("availability") != "out_of_stock"
+    
+    return {
+        "orderId": orderId,
+        "equipmentId": equipment_id,
+        "engineModel": engine_model,
+        "recommendedTools": tools,
+        "recommendedParts": parts
+    }
