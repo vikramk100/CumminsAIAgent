@@ -1,0 +1,79 @@
+<mvc:View
+  xmlns:mvc="sap.ui.core.mvc"
+  xmlns="sap.m"
+  controllerName="cummins.dispatcher.controller.Help">
+  <Page title="Help" showNavButton="true" navButtonPress="onNavBack">
+    <content>
+      <VBox class="sapUiSmallMargin">
+        <Title text="Getting Started" level="H2" class="sapUiSmallMarginBottom" />
+        <Text text="The Cummins AI Dispatch Portal helps you manage engine work orders, view equipment telemetry, and get AI-generated technician briefings. Follow the steps below to get started." class="sapUiSmallMarginBottom" />
+
+        <Panel headerText="Step 1 — Browse Work Orders" expandable="true" expanded="true" class="sapUiSmallMarginBottom">
+          <content>
+            <VBox class="sapUiSmallMargin">
+              <Text text="Navigate to Work Orders from the Home page. Use the Status and Priority filters to narrow down the list. Click any row to open the full dispatch detail for that work order." />
+            </VBox>
+          </content>
+        </Panel>
+
+        <Panel headerText="Step 2 — Read the AI Mission Briefing" expandable="true" expanded="false" class="sapUiSmallMarginBottom">
+          <content>
+            <VBox class="sapUiSmallMargin">
+              <Text text="Inside each work order detail, the Insights section contains an AI-generated mission briefing: root cause analysis, required tools, estimated repair time, and a manual reference. Click 'Talk to AI' to ask follow-up questions about the work order." />
+            </VBox>
+          </content>
+        </Panel>
+
+        <Panel headerText="Step 3 — Use the Tool Checklist" expandable="true" expanded="false" class="sapUiSmallMarginBottom">
+          <content>
+            <VBox class="sapUiSmallMargin">
+              <Text text="The Preparation section lists the recommended tools. Check them off as you gather them — each action is logged to the audit trail so the dispatcher can track readiness." />
+            </VBox>
+          </content>
+        </Panel>
+
+        <Panel headerText="Step 4 — Rate AI Insights" expandable="true" expanded="false" class="sapUiSmallMarginBottom">
+          <content>
+            <VBox class="sapUiSmallMargin">
+              <Text text="After reviewing the AI thought process, rate it with a thumbs up or down. Feedback is stored for model improvement and RLHF fine-tuning." />
+            </VBox>
+          </content>
+        </Panel>
+
+        <Panel headerText="Step 5 — Monitor Equipment" expandable="true" expanded="false" class="sapUiSmallMarginBottom">
+          <content>
+            <VBox class="sapUiSmallMargin">
+              <Text text="The Equipments page lists all registered equipment with their latest criticality rating derived from ML predictions. Use this view to identify machines that need proactive maintenance." />
+            </VBox>
+          </content>
+        </Panel>
+
+        <Title text="Frequently Asked Questions" level="H3" class="sapUiMediumMarginTop sapUiTinyMarginBottom" />
+
+        <Panel headerText="What AI model powers the dispatch briefing?" expandable="true" expanded="false" class="sapUiSmallMarginBottom">
+          <content>
+            <VBox class="sapUiSmallMargin">
+              <Text text="The system uses Google Gemini 2.0 Flash via GCP Vertex AI, orchestrated by a multi-agent pipeline (Orchestrator → Diagnostic Agent + Prescription Agent). All MongoDB lookups go through the MCP Server." />
+            </VBox>
+          </content>
+        </Panel>
+
+        <Panel headerText="How are failure predictions made?" expandable="true" expanded="false" class="sapUiSmallMarginBottom">
+          <content>
+            <VBox class="sapUiSmallMargin">
+              <Text text="A Random Forest classifier (trained on Hugging Face machine-failure-logs with SMOTE balancing) predicts failure type from telemetry: Process Temperature, Air Temperature, Rotational Speed, Torque, and Tool Wear." />
+            </VBox>
+          </content>
+        </Panel>
+
+        <Panel headerText="How do I change the API endpoint?" expandable="true" expanded="false" class="sapUiSmallMarginBottom">
+          <content>
+            <VBox class="sapUiSmallMargin">
+              <Text text="Go to Settings and update the API Base URL. The default is http://localhost:8000. You can also append ?apiBase=... to the URL in your browser." />
+            </VBox>
+          </content>
+        </Panel>
+      </VBox>
+    </content>
+  </Page>
+</mvc:View>

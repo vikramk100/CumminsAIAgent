@@ -1,0 +1,71 @@
+<mvc:View
+  xmlns:mvc="sap.ui.core.mvc"
+  xmlns="sap.m"
+  controllerName="cummins.dispatcher.controller.UserProfile">
+  <Page title="User Profile" showNavButton="true" navButtonPress="onNavBack">
+    <content>
+      <VBox class="sapUiSmallMargin">
+
+        <!-- Profile Card -->
+        <Panel class="sapUiSmallMarginBottom">
+          <content>
+            <HBox class="sapUiSmallMargin" alignItems="Center">
+              <Avatar initials="JD" size="L" class="sapUiSmallMarginEnd" />
+              <VBox>
+                <Title text="Jane Doe" level="H2" />
+                <Text text="Fleet Dispatcher — North America Region" />
+                <ObjectStatus text="Active" state="Success" class="sapUiTinyMarginTop" />
+              </VBox>
+            </HBox>
+          </content>
+        </Panel>
+
+        <!-- Details -->
+        <Panel headerText="Account Details" class="sapUiSmallMarginBottom">
+          <content>
+            <VBox class="sapUiSmallMargin">
+              <ObjectStatus title="Employee ID" text="EMP-00421" state="None" />
+              <ObjectStatus title="Department" text="Field Service Operations" state="None" class="sapUiTinyMarginTop" />
+              <ObjectStatus title="Location" text="Columbus, OH — Cummins HQ" state="None" class="sapUiTinyMarginTop" />
+              <ObjectStatus title="Role" text="Dispatcher / Analyst" state="None" class="sapUiTinyMarginTop" />
+              <ObjectStatus title="Email" text="j.doe@cummins.com" state="None" class="sapUiTinyMarginTop" />
+              <ObjectStatus title="Phone" text="+1 (812) 555-0182" state="None" class="sapUiTinyMarginTop" />
+            </VBox>
+          </content>
+        </Panel>
+
+        <!-- Permissions -->
+        <Panel headerText="Access &amp; Permissions" class="sapUiSmallMarginBottom">
+          <content>
+            <VBox class="sapUiSmallMargin">
+              <List noDataText="No permissions">
+                <items>
+                  <StandardListItem title="Work Order Management" description="Create, edit, and close work orders" icon="sap-icon://accept" />
+                  <StandardListItem title="AI Dispatch Briefing" description="View and rate AI-generated mission briefings" icon="sap-icon://accept" />
+                  <StandardListItem title="Equipment Overview" description="View equipment telemetry and criticality" icon="sap-icon://accept" />
+                  <StandardListItem title="Audit Trail" description="View tool checklist audit events" icon="sap-icon://accept" />
+                  <StandardListItem title="Admin / Settings" description="Modify system configuration" icon="sap-icon://decline" info="Not granted" infoState="Error" />
+                </items>
+              </List>
+            </VBox>
+          </content>
+        </Panel>
+
+        <!-- Recent Activity -->
+        <Panel headerText="Recent Activity" class="sapUiSmallMarginBottom">
+          <content>
+            <List class="sapUiSmallMargin" noDataText="No recent activity">
+              <items>
+                <StandardListItem title="Rated AI briefing for WO-DEMO-002" description="Thumbs up · 10 minutes ago" icon="sap-icon://thumb-up" />
+                <StandardListItem title="Opened dispatch brief for WO-DEMO-003" description="35 minutes ago" icon="sap-icon://detail-view" />
+                <StandardListItem title="Created work order WO-DEMO-005" description="2 hours ago" icon="sap-icon://add" />
+                <StandardListItem title="Completed tool checklist for WO-DEMO-001" description="Yesterday at 14:32" icon="sap-icon://checklist-item" />
+              </items>
+            </List>
+          </content>
+        </Panel>
+
+      </VBox>
+    </content>
+  </Page>
+</mvc:View>

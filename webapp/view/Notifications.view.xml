@@ -1,0 +1,70 @@
+<mvc:View
+  xmlns:mvc="sap.ui.core.mvc"
+  xmlns="sap.m"
+  controllerName="cummins.dispatcher.controller.Notifications">
+  <Page title="Notifications" showNavButton="true" navButtonPress="onNavBack">
+    <content>
+      <VBox class="sapUiSmallMargin">
+        <Toolbar>
+          <Title text="System Notifications" level="H2" />
+          <ToolbarSpacer />
+          <Button text="Mark All Read" type="Transparent" press="onMarkAllRead" />
+        </Toolbar>
+
+        <MessageStrip
+          text="New AI dispatch briefing generated for WO-DEMO-003 (Municipal Bus – Cooling System Failure)."
+          type="Information"
+          showIcon="true"
+          showCloseButton="true"
+          class="sapUiSmallMarginTop sapUiSmallMarginBottom" />
+
+        <List id="notificationList" noDataText="No notifications">
+          <items>
+            <StandardListItem
+              title="Work Order WO-DEMO-001 — Completed"
+              description="Highway breakdown resolved. Gasket failure confirmed. Closed 2 hours ago."
+              icon="sap-icon://accept"
+              iconInset="false"
+              info="Completed"
+              infoState="Success" />
+            <StandardListItem
+              title="Work Order WO-DEMO-003 — In Progress"
+              description="Municipal bus cooling failure. Technician dispatched. Awaiting confirmation."
+              icon="sap-icon://wrench"
+              iconInset="false"
+              info="In Progress"
+              infoState="Warning" />
+            <StandardListItem
+              title="Work Order WO-DEMO-004 — High Priority"
+              description="Combine harvester PWF fault detected. Harvest season — priority escalated."
+              icon="sap-icon://alert"
+              iconInset="false"
+              info="High Priority"
+              infoState="Error" />
+            <StandardListItem
+              title="ML Model Retrained"
+              description="Failure classifier updated with 1,200 new telemetry samples. Accuracy: 94.2%."
+              icon="sap-icon://machine-learning"
+              iconInset="false"
+              info="System"
+              infoState="None" />
+            <StandardListItem
+              title="New Manual Indexed"
+              description="Cummins X15 Performance Series — Section 14 (Fuel System) added to knowledge base."
+              icon="sap-icon://documents"
+              iconInset="false"
+              info="Knowledge Base"
+              infoState="None" />
+            <StandardListItem
+              title="Equipment TRUCK-X15-001 — Telemetry Alert"
+              description="Process temperature exceeded threshold (372 K). Monitor for recurrence."
+              icon="sap-icon://temperature"
+              iconInset="false"
+              info="Telemetry"
+              infoState="Warning" />
+          </items>
+        </List>
+      </VBox>
+    </content>
+  </Page>
+</mvc:View>

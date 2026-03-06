@@ -1,0 +1,91 @@
+<mvc:View
+  xmlns:mvc="sap.ui.core.mvc"
+  xmlns="sap.m"
+  controllerName="cummins.dispatcher.controller.SupportCenter">
+  <Page title="Support Center" showNavButton="true" navButtonPress="onNavBack">
+    <content>
+      <VBox class="sapUiSmallMargin">
+        <Title text="Support Center" level="H2" class="sapUiSmallMarginBottom" />
+        <Text text="Need help? Contact your system administrator or use the resources below." class="sapUiSmallMarginBottom" />
+
+        <!-- Contact Cards -->
+        <Title text="Contact" level="H3" class="sapUiTinyMarginBottom" />
+        <HBox wrap="Wrap" class="sapUiSmallMarginBottom">
+          <Panel class="sapUiTinyMarginEnd sapUiSmallMarginBottom" width="22rem">
+            <content>
+              <VBox class="sapUiSmallMargin">
+                <Title text="IT Help Desk" level="H4" />
+                <Text text="For application access, login issues, and technical problems." class="sapUiTinyMarginTop sapUiSmallMarginBottom" />
+                <ObjectStatus title="Email" text="helpdesk@cummins.com" state="None" />
+                <ObjectStatus title="Phone" text="+1 (812) 555-0100" state="None" class="sapUiTinyMarginTop" />
+                <ObjectStatus title="Hours" text="Mon – Fri, 08:00–18:00 ET" state="None" class="sapUiTinyMarginTop" />
+              </VBox>
+            </content>
+          </Panel>
+          <Panel class="sapUiTinyMarginEnd sapUiSmallMarginBottom" width="22rem">
+            <content>
+              <VBox class="sapUiSmallMargin">
+                <Title text="AI Platform Team" level="H4" />
+                <Text text="For questions about AI briefings, ML model behaviour, or data quality." class="sapUiTinyMarginTop sapUiSmallMarginBottom" />
+                <ObjectStatus title="Email" text="ai-platform@cummins.com" state="None" />
+                <ObjectStatus title="Slack" text="#ai-dispatch-support" state="None" class="sapUiTinyMarginTop" />
+                <ObjectStatus title="Response SLA" text="4 business hours" state="None" class="sapUiTinyMarginTop" />
+              </VBox>
+            </content>
+          </Panel>
+          <Panel width="22rem" class="sapUiSmallMarginBottom">
+            <content>
+              <VBox class="sapUiSmallMargin">
+                <Title text="Field Service Ops" level="H4" />
+                <Text text="For work order escalations, technician assignments, and fleet issues." class="sapUiTinyMarginTop sapUiSmallMarginBottom" />
+                <ObjectStatus title="Email" text="fieldops@cummins.com" state="None" />
+                <ObjectStatus title="Phone" text="+1 (812) 555-0199" state="None" class="sapUiTinyMarginTop" />
+                <ObjectStatus title="Hours" text="24 / 7 on-call" state="None" class="sapUiTinyMarginTop" />
+              </VBox>
+            </content>
+          </Panel>
+        </HBox>
+
+        <!-- Submit a Ticket -->
+        <Title text="Submit a Support Ticket" level="H3" class="sapUiMediumMarginTop sapUiTinyMarginBottom" />
+        <Panel class="sapUiSmallMarginBottom">
+          <content>
+            <VBox class="sapUiSmallMargin">
+              <Label text="Category" class="sapUiTinyMarginBottom" />
+              <Select id="ticketCategory" width="16rem" class="sapUiSmallMarginBottom">
+                <items>
+                  <core:Item xmlns:core="sap.ui.core" key="access" text="Access / Login" />
+                  <core:Item xmlns:core="sap.ui.core" key="ai" text="AI Briefing Issue" />
+                  <core:Item xmlns:core="sap.ui.core" key="data" text="Data / Work Order" />
+                  <core:Item xmlns:core="sap.ui.core" key="bug" text="Application Bug" />
+                  <core:Item xmlns:core="sap.ui.core" key="other" text="Other" />
+                </items>
+              </Select>
+              <Label text="Subject" class="sapUiTinyMarginBottom" />
+              <Input id="ticketSubject" width="30rem" placeholder="Brief description of the issue" class="sapUiSmallMarginBottom" />
+              <Label text="Description" class="sapUiTinyMarginBottom" />
+              <TextArea id="ticketDescription" width="30rem" rows="5" placeholder="Describe the issue in detail. Include work order IDs, equipment IDs, or error messages if applicable." class="sapUiSmallMarginBottom" />
+              <Button text="Submit Ticket" type="Emphasized" press="onSubmitTicket" />
+            </VBox>
+          </content>
+        </Panel>
+
+        <!-- System Status -->
+        <Title text="System Status" level="H3" class="sapUiMediumMarginTop sapUiTinyMarginBottom" />
+        <Panel class="sapUiSmallMarginBottom">
+          <content>
+            <VBox class="sapUiSmallMargin">
+              <ObjectStatus title="FastAPI Backend" text="Operational" state="Success" />
+              <ObjectStatus title="MongoDB Atlas" text="Operational" state="Success" class="sapUiTinyMarginTop" />
+              <ObjectStatus title="GCP Vertex AI" text="Operational" state="Success" class="sapUiTinyMarginTop" />
+              <ObjectStatus title="ML Prediction Service" text="Operational" state="Success" class="sapUiTinyMarginTop" />
+              <ObjectStatus title="Last Checked" id="statusLastChecked" text="—" state="None" class="sapUiTinyMarginTop" />
+              <Button text="Refresh Status" type="Default" press="onRefreshStatus" class="sapUiSmallMarginTop" />
+            </VBox>
+          </content>
+        </Panel>
+
+      </VBox>
+    </content>
+  </Page>
+</mvc:View>

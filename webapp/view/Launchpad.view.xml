@@ -1,11 +1,81 @@
 <mvc:View
   xmlns:mvc="sap.ui.core.mvc"
   xmlns="sap.m"
+  xmlns:f="sap.f"
   controllerName="cummins.dispatcher.controller.Launchpad">
   <Page title="{i18n>appTitle}" showHeader="true">
     <content>
       <VBox alignItems="Start" justifyContent="Start" width="100%" class="sapUiResponsiveMargin">
-        <Title text="My Home" level="H2" class="sapUiTinyMarginBottom" />
+
+        <!-- Welcome Banner -->
+        <VBox class="sapUiSmallMarginBottom" width="100%">
+          <Title text="Welcome to the Cummins AI Dispatch Portal" level="H2" class="sapUiTinyMarginBottom" />
+          <Text text="An intelligent work order management platform powered by multi-agent AI. Diagnose engine faults, generate technician mission briefings, and track equipment health across your fleet — all in one place." class="sapUiSmallMarginBottom" />
+        </VBox>
+
+        <!-- KPI Strip -->
+        <HBox wrap="Wrap" class="sapUiSmallMarginBottom" width="100%">
+          <GenericTile
+            id="kpiWorkOrders"
+            header="Total Work Orders"
+            subheader="Across all statuses"
+            size="S"
+            tileContent=""
+            class="sapUiTinyMarginEnd sapUiTinyMarginBottom">
+            <tileContent>
+              <TileContent>
+                <content>
+                  <NumericContent id="kpiWoCount" value="—" scale="" indicator="None" withMargin="false" />
+                </content>
+              </TileContent>
+            </tileContent>
+          </GenericTile>
+          <GenericTile
+            id="kpiEquipments"
+            header="Active Equipment"
+            subheader="Registered in fleet"
+            size="S"
+            class="sapUiTinyMarginEnd sapUiTinyMarginBottom">
+            <tileContent>
+              <TileContent>
+                <content>
+                  <NumericContent id="kpiEqCount" value="—" scale="" indicator="None" withMargin="false" />
+                </content>
+              </TileContent>
+            </tileContent>
+          </GenericTile>
+          <GenericTile
+            header="AI Model"
+            subheader="Vertex AI — Gemini"
+            size="S"
+            class="sapUiTinyMarginEnd sapUiTinyMarginBottom">
+            <tileContent>
+              <TileContent>
+                <content>
+                  <NumericContent value="2.0" scale="Flash" indicator="None" withMargin="false" />
+                </content>
+              </TileContent>
+            </tileContent>
+          </GenericTile>
+          <GenericTile
+            header="Engine Families"
+            subheader="X15 · B6.7 · ISB"
+            size="S"
+            class="sapUiTinyMarginEnd sapUiTinyMarginBottom">
+            <tileContent>
+              <TileContent>
+                <content>
+                  <NumericContent value="3" scale="" indicator="None" withMargin="false" />
+                </content>
+              </TileContent>
+            </tileContent>
+          </GenericTile>
+        </HBox>
+
+        <!-- Divider -->
+        <Title text="My Home" level="H3" class="sapUiTinyMarginBottom sapUiSmallMarginTop" />
+
+        <!-- Main Navigation Tiles -->
         <FlexBox id="LaunchpadTiles" justifyContent="Start" alignItems="Start" wrap="Wrap" class="sapUiSmallMarginTop">
           <GenericTile
             header="Work Orders and Confirmations"
@@ -19,9 +89,33 @@
             press="onNavToEquipments"
             size="M"
             class="sapUiTinyMarginEnd sapUiTinyMarginBottom" />
+          <GenericTile
+            header="Notifications"
+            subheader="System alerts and updates"
+            press="onNavToNotifications"
+            size="M"
+            class="sapUiTinyMarginEnd sapUiTinyMarginBottom" />
+          <GenericTile
+            header="Settings"
+            subheader="Configure API and preferences"
+            press="onNavToSettings"
+            size="M"
+            class="sapUiTinyMarginEnd sapUiTinyMarginBottom" />
         </FlexBox>
+
+        <!-- About Section -->
+        <VBox class="sapUiMediumMarginTop" width="100%">
+          <Title text="About this Portal" level="H4" class="sapUiTinyMarginBottom" />
+          <Text text="This portal bridges SAP BNAC work order data with real-time machine telemetry and AI-driven diagnostics. The multi-agent system analyses equipment sensor readings, queries engine manuals, and synthesises mission briefings to reduce technician dispatch time and improve first-time fix rates." />
+          <HBox class="sapUiSmallMarginTop" wrap="Wrap">
+            <ObjectStatus text="Backend: FastAPI / Python" state="Success" class="sapUiTinyMarginEnd" />
+            <ObjectStatus text="Database: MongoDB Atlas" state="Success" class="sapUiTinyMarginEnd" />
+            <ObjectStatus text="AI: GCP Vertex AI" state="Success" class="sapUiTinyMarginEnd" />
+            <ObjectStatus text="Frontend: SAP UI5" state="Success" />
+          </HBox>
+        </VBox>
+
       </VBox>
     </content>
   </Page>
 </mvc:View>
-

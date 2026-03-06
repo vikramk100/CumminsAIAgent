@@ -8,14 +8,13 @@
         <Title text="SAP - Business Network Portal" level="H3" />
       </contentLeft>
       <contentRight>
-        <Button text="Notifications" type="Transparent" />
-        <Button text="Help" type="Transparent" />
-        <Button text="Settings" type="Transparent" />
-        <Button text="User Profile" type="Transparent" />
-        <Button text="Support Center" type="Transparent" />
+        <Button text="Notifications" type="Transparent" press="onNavNotifications" />
+        <Button text="Help" type="Transparent" press="onNavHelp" />
+        <Button text="Settings" type="Transparent" press="onNavSettings" />
+        <Button text="User Profile" type="Transparent" press="onNavUserProfile" />
+        <Button text="Support Center" type="Transparent" press="onNavSupportCenter" />
       </contentRight>
     </Bar>
     <App id="app" />
   </VBox>
 </mvc:View>
-

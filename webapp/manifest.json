@@ -76,6 +76,31 @@
           "name": "workOrderDetail",
           "pattern": "workorders/{orderId}",
           "target": "WorkOrderDetail"
+        },
+        {
+          "name": "notifications",
+          "pattern": "notifications",
+          "target": "Notifications"
+        },
+        {
+          "name": "help",
+          "pattern": "help",
+          "target": "Help"
+        },
+        {
+          "name": "settings",
+          "pattern": "settings",
+          "target": "Settings"
+        },
+        {
+          "name": "userProfile",
+          "pattern": "profile",
+          "target": "UserProfile"
+        },
+        {
+          "name": "supportCenter",
+          "pattern": "support",
+          "target": "SupportCenter"
         }
       ],
       "targets": {
@@ -90,6 +115,21 @@
         },
         "WorkOrderDetail": {
           "viewName": "Main"
+        },
+        "Notifications": {
+          "viewName": "Notifications"
+        },
+        "Help": {
+          "viewName": "Help"
+        },
+        "Settings": {
+          "viewName": "Settings"
+        },
+        "UserProfile": {
+          "viewName": "UserProfile"
+        },
+        "SupportCenter": {
+          "viewName": "SupportCenter"
         }
       }
     }

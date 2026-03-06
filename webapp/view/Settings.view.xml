@@ -1,0 +1,74 @@
+<mvc:View
+  xmlns:mvc="sap.ui.core.mvc"
+  xmlns="sap.m"
+  xmlns:f="sap.ui.layout.form"
+  controllerName="cummins.dispatcher.controller.Settings">
+  <Page title="Settings" showNavButton="true" navButtonPress="onNavBack">
+    <content>
+      <VBox class="sapUiSmallMargin">
+        <Title text="Application Settings" level="H2" class="sapUiSmallMarginBottom" />
+
+        <Panel headerText="API Configuration" class="sapUiSmallMarginBottom">
+          <content>
+            <VBox class="sapUiSmallMargin">
+              <Label text="API Base URL" class="sapUiTinyMarginBottom" />
+              <HBox>
+                <Input id="apiBaseInput" width="25rem" placeholder="http://localhost:8000" />
+                <Button text="Save" type="Emphasized" press="onSaveApiBase" class="sapUiSmallMarginBegin" />
+                <Button text="Test Connection" type="Default" press="onTestConnection" class="sapUiTinyMarginBegin" />
+              </HBox>
+              <Text id="connectionStatus" text="" class="sapUiTinyMarginTop" />
+            </VBox>
+          </content>
+        </Panel>
+
+        <Panel headerText="Display Preferences" class="sapUiSmallMarginBottom">
+          <content>
+            <VBox class="sapUiSmallMargin">
+              <Label text="Work Orders per page" class="sapUiTinyMarginBottom" />
+              <Select id="pageSize" width="10rem" change="onPageSizeChange">
+                <items>
+                  <core:Item xmlns:core="sap.ui.core" key="25" text="25" />
+                  <core:Item xmlns:core="sap.ui.core" key="50" text="50" />
+                  <core:Item xmlns:core="sap.ui.core" key="100" text="100" />
+                  <core:Item xmlns:core="sap.ui.core" key="200" text="200" />
+                </items>
+              </Select>
+              <Label text="Default Work Order Status Filter" class="sapUiTinyMarginBottom sapUiSmallMarginTop" />
+              <Select id="defaultStatus" width="12rem" change="onDefaultStatusChange">
+                <items>
+                  <core:Item xmlns:core="sap.ui.core" key="" text="All" />
+                  <core:Item xmlns:core="sap.ui.core" key="In Progress" text="In Progress" />
+                  <core:Item xmlns:core="sap.ui.core" key="Released" text="Released" />
+                  <core:Item xmlns:core="sap.ui.core" key="Created" text="Created" />
+                </items>
+              </Select>
+            </VBox>
+          </content>
+        </Panel>
+
+        <Panel headerText="AI Configuration" class="sapUiSmallMarginBottom">
+          <content>
+            <VBox class="sapUiSmallMargin">
+              <ObjectStatus title="AI Provider" text="GCP Vertex AI" state="Success" />
+              <ObjectStatus title="Model" text="gemini-2.0-flash-001" state="None" class="sapUiTinyMarginTop" />
+              <ObjectStatus title="Region" text="us-central1" state="None" class="sapUiTinyMarginTop" />
+              <Text text="AI model configuration is managed server-side via environment variables. Contact your system administrator to change the model." class="sapUiSmallMarginTop" />
+            </VBox>
+          </content>
+        </Panel>
+
+        <Panel headerText="About" class="sapUiSmallMarginBottom">
+          <content>
+            <VBox class="sapUiSmallMargin">
+              <ObjectStatus title="Application" text="Cummins AI Dispatch Portal" state="None" />
+              <ObjectStatus title="Version" text="0.1.0" state="None" class="sapUiTinyMarginTop" />
+              <ObjectStatus title="Frontend" text="SAP UI5 (sap_horizon)" state="None" class="sapUiTinyMarginTop" />
+              <ObjectStatus title="Backend" text="FastAPI / Python" state="None" class="sapUiTinyMarginTop" />
+            </VBox>
+          </content>
+        </Panel>
+      </VBox>
+    </content>
+  </Page>
+</mvc:View>
